@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "bac0ff8d-1d09-4c0b-9167-ef633e12a032"
+      }
+    },
+    "android": {
+      "package": "com.eduardosouza1.shello"
+    }
+  }
+}
