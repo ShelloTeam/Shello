@@ -6,7 +6,8 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "ts-check": "tsc --noEmit"
   },
   "dependencies": {
     "@react-navigation/bottom-tabs": "^7.2.0",
