@@ -46,6 +46,16 @@ export default function TelaEntradaDiario({ route, navigation }: Props): React.J
 
   const inputRef = useRef<TextInput>(null);
   const animacaoContexto = useRef(new Animated.Value(0)).current;
+  const animacaoRef = useRef<Animated.CompositeAnimation | null>(null);
+  const timerModal = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup de animações e timers ao desmontar
+  useEffect(() => {
+    return () => {
+      animacaoRef.current?.stop();
+      if (timerModal.current) clearTimeout(timerModal.current);
+    };
+  }, []);
 
   // Foca automaticamente ao abrir nova entrada
   useEffect(() => {
@@ -54,6 +64,11 @@ export default function TelaEntradaDiario({ route, navigation }: Props): React.J
       return () => clearTimeout(timer);
     }
   }, [nova]);
+
+  // ── Gera título a partir das primeiras 40 chars do conteúdo ───────────────
+  function gerarTitulo(conteudo: string): string {
+    return conteudo.slice(0, 40) + (conteudo.length > 40 ? '...' : '');
+  }
 
   // ── Ação: Finalizar entrada ───────────────────────────────────────────────
   const finalizarEntrada = useCallback(async () => {
@@ -65,11 +80,10 @@ export default function TelaEntradaDiario({ route, navigation }: Props): React.J
 
     setSalvando(true);
     try {
+      const titulo = gerarTitulo(conteudoTrimado);
       if (idEntradaSalva) {
-        const titulo = conteudoTrimado.slice(0, 40) + (conteudoTrimado.length > 40 ? '...' : '');
         await atualizarEntrada(idEntradaSalva, titulo, conteudoTrimado);
       } else {
-        const titulo = conteudoTrimado.slice(0, 40) + (conteudoTrimado.length > 40 ? '...' : '');
         const novaEntrada = await adicionarEntrada(titulo, conteudoTrimado);
         setIdEntradaSalva(novaEntrada.id);
       }
@@ -90,21 +104,22 @@ export default function TelaEntradaDiario({ route, navigation }: Props): React.J
     try {
       let idParaContexto = idEntradaSalva;
       if (!idParaContexto) {
-        const titulo = conteudoTrimado.slice(0, 40) + (conteudoTrimado.length > 40 ? '...' : '');
-        const novaEntrada = await adicionarEntrada(titulo, conteudoTrimado);
+        const novaEntrada = await adicionarEntrada(gerarTitulo(conteudoTrimado), conteudoTrimado);
         setIdEntradaSalva(novaEntrada.id);
         idParaContexto = novaEntrada.id;
       }
       await marcarEntradaComoContexto(idParaContexto, conteudoTrimado);
 
-      Animated.sequence([
+      animacaoRef.current = Animated.sequence([
         Animated.timing(animacaoContexto, { toValue: 1, duration: 300, useNativeDriver: true }),
         Animated.delay(2000),
         Animated.timing(animacaoContexto, { toValue: 0, duration: 300, useNativeDriver: true }),
-      ]).start();
+      ]);
+      animacaoRef.current.start();
 
       setModalContexto(true);
-      setTimeout(() => setModalContexto(false), 2500);
+      if (timerModal.current) clearTimeout(timerModal.current);
+      timerModal.current = setTimeout(() => setModalContexto(false), 2500);
     } catch (e) {
       console.error('Erro ao adicionar contexto:', e);
     } finally {
@@ -323,7 +338,7 @@ const estilos = StyleSheet.create({
     fontSize: 17,
     color: ShelloTema.cores.textoP,
     lineHeight: 28,
-    fontFamily: 'serif',
+    fontFamily: ShelloTema.tipografia.titulo,
     minHeight: 300,
     textAlignVertical: 'top',
   },

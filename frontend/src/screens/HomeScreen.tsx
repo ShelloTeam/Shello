@@ -14,8 +14,23 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { ShelloTema } from '../styles/tema';
 import { useShello } from '../contexts/ShelloContext';
+
+// ─── Constantes de cor terracota (tokens pendentes no ShelloTema) ─────────────
+// TODO: mover para ShelloTema quando os tokens forem oficializados
+const COR_TERRACOTA_ICONE = '#B5856A';
+const COR_TERRACOTA_TITULO = '#8B5E4A';
+const COR_TERRACOTA_TEXTO = '#B5856A';
+
+// ─── Tipo da navegação raiz (Bottom Tabs) ────────────────────────────────────
+type RootTabNavigation = BottomTabNavigationProp<{
+  DiarioTab: undefined;
+  TarefasTab: undefined;
+  ChatTab: undefined;
+  HomeTab: undefined;
+}>;
 
 // ─── Utilitário de data em português ──────────────────────────────────────────
 
@@ -42,7 +57,7 @@ function obterSaudacao(): string {
 
 export default function HomeScreen() {
   const { nomeUsuario, entradas } = useShello();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<RootTabNavigation>();
 
   // Animação de pressão no FAB
   const escalaFab = useRef(new Animated.Value(1)).current;
@@ -152,7 +167,7 @@ export default function HomeScreen() {
               <Feather
                 name="check-square"
                 size={24}
-                color="#B5856A"
+                color={COR_TERRACOTA_ICONE}
               />
             </View>
             <Text style={[estilos.atalhoTitulo, estilos.atalhoTituloTerracota]}>
@@ -278,7 +293,7 @@ const estilos = StyleSheet.create({
   },
   textoBadgeTerracota: {
     fontSize: ShelloTema.tipografia.tamanhos.minusculo,
-    color: '#B5856A',
+    color: COR_TERRACOTA_TEXTO,
     fontWeight: ShelloTema.tipografia.pesos.medio,
     letterSpacing: 0.2,
   },
@@ -334,7 +349,7 @@ const estilos = StyleSheet.create({
     marginBottom: 4,
   },
   atalhoTituloTerracota: {
-    color: '#8B5E4A',
+    color: COR_TERRACOTA_TITULO,
   },
   atalhoSubtexto: {
     fontSize: ShelloTema.tipografia.tamanhos.minusculo,

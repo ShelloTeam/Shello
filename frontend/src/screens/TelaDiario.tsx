@@ -162,6 +162,8 @@ function CardEntrada({ entrada, iaLendo, onPress }: CardEntradaProps) {
       style={estilos.cardEntrada}
       onPress={onPress}
       activeOpacity={0.78}
+      accessibilityLabel={`Entrada: ${entrada.titulo}`}
+      accessibilityRole="button"
     >
       {/* Título da entrada */}
       <Text style={estilos.cardEntradaTitulo} numberOfLines={1}>
@@ -217,6 +219,8 @@ function EstadoVazio({ onNova }: EstadoVazioProps) {
         style={estilos.vazioButtonCTA}
         onPress={onNova}
         activeOpacity={0.82}
+        accessibilityLabel="Escrever primeira entrada no diário"
+        accessibilityRole="button"
       >
         <Feather name="edit-3" size={16} color="#FFFFFF" style={estilos.vazioButtonIcone} />
         <Text style={estilos.vazioButtonTexto}>Escrever primeira entrada</Text>
@@ -241,16 +245,7 @@ export default function TelaDiario({ navigation }: Props) {
     };
   }, []);
 
-  // Quando voltar de TelaEntradaDiario, verifica se deve exibir "IA lendo"
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      // A tela recebe o último ID salvo via route params se necessário
-      // A lógica de idIaLendo pode ser controlada por quem volta
-    });
-    return unsubscribe;
-  }, [navigation]);
-
-  // Dispara indicador de IA lendo para a entrada mais recente se >100 chars
+  // Escuta quando uma nova entrada foi criada (via route params)
   const dispararIaLendo = useCallback((entradaId: string) => {
     setIdIaLendo(entradaId);
     if (timerIaLendo.current) clearTimeout(timerIaLendo.current);
