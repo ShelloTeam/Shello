@@ -1,23 +1,26 @@
-// Tipos globais do Shello
+// Tipos globais do Shello v2
 // Define as estruturas de dados utilizadas em todo o aplicativo
 
-/** Representa uma nota do diário do usuário */
-export interface NotaDiario {
+/** Representa uma entrada do diário do usuário */
+export interface EntradaDiario {
   id: string;
+  titulo: string;
   conteudo: string;
   dataCriacao: string; // ISO 8601
+  adicionadaAoContexto: boolean;
 }
 
 /** Representa uma tarefa ou intenção do usuário */
 export interface Tarefa {
   id: string;
   titulo: string;
+  descricao?: string;
   concluida: boolean;
-  dataVencimento?: string; // ISO 8601, opcional
+  data?: string; // Data escolhida pelo usuário — ISO 8601
   dataCriacao: string;
 }
 
-/** Representa uma rotina diária */
+/** Representa uma rotina diária criada pelo usuário */
 export interface Rotina {
   id: string;
   titulo: string;
@@ -46,8 +49,11 @@ export interface MensagemChat {
   remetente: 'usuario' | 'ia';
   conteudo: string;
   horario: string; // ex: "10:30"
-  tarefaSugerida?: string; // título de tarefa sugerida pela IA
+  expressao?: 'neutro' | 'duvidoso' | 'surpreso' | 'feliz'; // expressão do mascote
 }
 
 /** Estado de formalidade da IA */
 export type NivelFormalidade = 'baixa' | 'media' | 'alta';
+
+/** Expressões disponíveis do mascote Shello */
+export type ExpressaoShello = 'neutro' | 'duvidoso' | 'surpreso' | 'feliz';

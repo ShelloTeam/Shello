@@ -145,6 +145,10 @@ export default function TelaOnboarding() {
     if (carregando) return;
 
     if (passoAtual < 2) {
+      // Valida campo obrigatório do passo 0 (nome)
+      if (passoAtual === 0 && !dadosForm.nome.trim()) {
+        // Permite avançar mesmo sem nome — usará "Você" como fallback
+      }
       // Avança para o próximo passo com animação
       animarTransicao('proximo', () => {
         setPassoAtual((p) => (p + 1) as PassoOnboarding);
@@ -156,10 +160,19 @@ export default function TelaOnboarding() {
       // Simula persistência com pequeno delay para UX mais agradável
       await new Promise<void>((resolve) => setTimeout(resolve, 600));
 
-      await concluirOnboarding(dadosForm);
+      // Garante que nome nunca fique vazio
+      const dadosFinais = {
+        nome: dadosForm.nome.trim() || 'Você',
+        estiloDeVida: dadosForm.estiloDeVida.trim() || 'Ainda descobrindo',
+        metaAtual: dadosForm.metaAtual.trim() || 'Crescer cada dia mais',
+      };
+
+      await concluirOnboarding(dadosFinais);
       setCarregando(false);
+      // O ShelloContext seta onboardingConcluido = true e o navigator reage automaticamente
     }
   }, [carregando, passoAtual, animarTransicao, concluirOnboarding, dadosForm]);
+
 
   // ─── Ação de voltar ──────────────────────────────────────────────────────
 

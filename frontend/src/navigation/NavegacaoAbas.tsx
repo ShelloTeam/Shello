@@ -9,7 +9,7 @@ import { ShelloTema } from '../styles/tema';
 
 // Telas das abas
 import HomeScreen from '../screens/HomeScreen';
-import TelaDiario from '../screens/TelaDiario';
+import NavegacaoDiario from './NavegacaoDiario';
 import TelaChat from '../screens/TelaChat';
 import TelaTarefas from '../screens/TelaTarefas';
 import TelaPerfil from '../screens/TelaPerfil';
@@ -86,7 +86,7 @@ export default function NavegacaoAbas() {
       />
       <Tab.Screen
         name="DiarioTab"
-        component={TelaDiario}
+        component={NavegacaoDiario}
         options={{ tabBarLabel: 'Diário' }}
       />
       <Tab.Screen

@@ -46,8 +46,12 @@ interface CamposRecuperar {
 
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
-export default function TelaAutenticacao() {
-  const { concluirOnboarding } = useShello();
+interface TelaAutenticacaoProps {
+  navigation: { navigate: (rota: string) => void };
+}
+
+export default function TelaAutenticacao({ navigation }: TelaAutenticacaoProps) {
+  const { onboardingConcluido } = useShello();
 
   // Estado do formulário ativo
   const [formularioAtivo, setFormularioAtivo] = useState<FormularioAtivo>('login');
@@ -112,15 +116,13 @@ export default function TelaAutenticacao() {
     // Simula chamada de API com 800ms de espera
     await new Promise<void>((resolve) => setTimeout(resolve, 800));
 
-    // Simula login/cadastro — chama concluirOnboarding como fluxo de autenticação
-    await concluirOnboarding({
-      nome: camposCadastro.nome || camposLogin.email.split('@')[0] || 'Usuário',
-      estiloDeVida: '',
-      metaAtual: '',
-    });
-
     setCarregando(false);
-  }, [carregando, concluirOnboarding, camposCadastro.nome, camposLogin.email]);
+
+    // Navega para o Onboarding — onde o usuário vai preencher seu contexto
+    // O Onboarding chama concluirOnboarding() que seta onboardingConcluido = true
+    navigation.navigate('Onboarding');
+  }, [carregando, navigation]);
+
 
   // ─── Renderização da Logo ─────────────────────────────────────────────────
 
