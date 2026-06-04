@@ -1,105 +1,85 @@
-// HomeScreen.tsx — Tela inicial do Shello
-// Exibe saudação personalizada, card do diário do dia, atalhos e FAB
+// HomeScreen.tsx — Tela inicial limpa do Shello
+// Saudação personalizada, badges de progresso e atalhos rápidos (sem input inline)
 
-import React, { useState, useRef } from 'react';
+import React, { useRef, useCallback } from 'react';
 import {
   View,
   Text,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
+  Image,
   Animated,
-  Dimensions,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { ShelloTema } from '../styles/tema';
 import { useShello } from '../contexts/ShelloContext';
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
-
-interface HomeScreenProps {
-  navigation: {
-    navigate: (rota: string) => void;
-  };
-}
-
-// ─── Utilitário de data em português ─────────────────────────────────────────
+// ─── Utilitário de data em português ──────────────────────────────────────────
 
 function formatarDataPtBR(): string {
   const agora = new Date();
-  // Formata como: 'Quinta-feira, 4 de Junho'
   const diaFormatado = new Intl.DateTimeFormat('pt-BR', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
   }).format(agora);
-  // Capitaliza a primeira letra
   return diaFormatado.charAt(0).toUpperCase() + diaFormatado.slice(1);
+}
+
+// ─── Saudação baseada no horário ──────────────────────────────────────────────
+
+function obterSaudacao(): string {
+  const hora = new Date().getHours();
+  if (hora >= 5 && hora < 12) return 'Bom dia,';
+  if (hora >= 12 && hora < 18) return 'Boa tarde,';
+  return 'Boa noite,';
 }
 
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
-export default function HomeScreen({ navigation }: HomeScreenProps) {
-  const { nomeUsuario, adicionarNota } = useShello();
+export default function HomeScreen() {
+  const { nomeUsuario, entradas } = useShello();
+  const navigation = useNavigation<any>();
 
-  // Estado do mini-editor do card
-  const [textoNota, setTextoNota] = useState('');
-  const [salvando, setSalvando] = useState(false);
-
-  // Animação do FAB (escala ao pressionar)
+  // Animação de pressão no FAB
   const escalaFab = useRef(new Animated.Value(1)).current;
 
   const dataFormatada = formatarDataPtBR();
+  const saudacao = obterSaudacao();
+  const nome = nomeUsuario || 'Amigo';
+  const totalEntradas = entradas.length;
 
-  // ─── Handlers ────────────────────────────────────────────────────────────
+  // ─── Handlers ─────────────────────────────────────────────────────────────
 
-  // Salva a nota rápida do card de hoje
-  async function handleSalvarNota() {
-    if (!textoNota.trim() || salvando) return;
-    setSalvando(true);
-    try {
-      await adicionarNota(textoNota.trim());
-      setTextoNota('');
-    } finally {
-      setSalvando(false);
-    }
-  }
-
-  // Animação de pressão no FAB
-  function handleFabPressIn() {
+  const handleFabPressIn = useCallback(() => {
     Animated.spring(escalaFab, {
       toValue: 0.88,
       useNativeDriver: true,
       speed: 30,
+      bounciness: 4,
     }).start();
-  }
+  }, [escalaFab]);
 
-  function handleFabPressOut() {
+  const handleFabPressOut = useCallback(() => {
     Animated.spring(escalaFab, {
       toValue: 1,
       useNativeDriver: true,
       speed: 20,
+      bounciness: 6,
     }).start();
-  }
+  }, [escalaFab]);
 
-  // Navega para a aba do Diário
-  function irParaDiario() {
-    navigation.navigate('DiarioTab');
-  }
-
-  // Navega para a aba do Chat
-  function irParaChat() {
-    navigation.navigate('ChatTab');
-  }
+  const irParaDiario = useCallback(() => navigation.navigate('DiarioTab'), [navigation]);
+  const irParaTarefas = useCallback(() => navigation.navigate('TarefasTab'), [navigation]);
+  const irParaChat = useCallback(() => navigation.navigate('ChatTab'), [navigation]);
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={estilos.areaSegura} edges={['top']}>
-      {/* ScrollView principal */}
       <ScrollView
         style={estilos.scroll}
         contentContainerStyle={estilos.conteudoScroll}
@@ -111,117 +91,74 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             name="calendar"
             size={16}
             color={ShelloTema.cores.textoS}
-            style={estilos.iconeCalendario}
           />
           <Text style={estilos.textoData}>{dataFormatada}</Text>
         </View>
 
-        {/* ── Saudação personalizada ── */}
+        {/* ── Saudação em 2 linhas ── */}
         <View style={estilos.blocoSaudacao}>
-          <Text style={estilos.saudacaoLinha1}>Bom dia,</Text>
-          <Text style={estilos.saudacaoNome}>
-            {nomeUsuario || 'Amigo'} 🌿
-          </Text>
+          <Text style={estilos.saudacaoLinha1}>{saudacao}</Text>
+          <Text style={estilos.saudacaoNome}>{nome} 🌿</Text>
           <Text style={estilos.subtitulo}>
-            Sua mente é um jardim. Cultive-a diariamente.
+            Sua mente é um jardim. Nutra-a diariamente.
           </Text>
         </View>
 
-        {/* ── Badges de progresso ── */}
+        {/* ── Badges pill lado a lado ── */}
         <View style={estilos.filhaBadges}>
-          {/* Badge verde — sequência de dias */}
           <View style={[estilos.badge, estilos.badgeVerde]}>
             <Text style={estilos.textoBadgeVerde}>🔥 7 dias seguidos</Text>
           </View>
-
-          {/* Badge terracota — total de entradas */}
           <View style={[estilos.badge, estilos.badgeTerracota]}>
-            <Text style={estilos.textoBadgeTerracota}>✍️ 24 entradas</Text>
-          </View>
-        </View>
-
-        {/* ── Card central do diário de hoje ── */}
-        <View style={estilos.cardDiario}>
-          {/* Cabeçalho interno do card */}
-          <View style={estilos.cardCabecalho}>
-            <View style={estilos.circuloIcone}>
-              <Feather
-                name="feather"
-                size={18}
-                color={ShelloTema.cores.marca}
-              />
-            </View>
-            <Text style={estilos.cardTitulo}>Diário de Hoje</Text>
-          </View>
-
-          {/* Pergunta motivacional */}
-          <Text style={estilos.cardPergunta}>
-            Que momentos trouxeram paz para você hoje?
-          </Text>
-
-          {/* Campo de texto rápido */}
-          <TextInput
-            style={estilos.inputNota}
-            value={textoNota}
-            onChangeText={setTextoNota}
-            placeholder="Começar a escrever..."
-            placeholderTextColor={ShelloTema.cores.textoS}
-            multiline
-            textAlignVertical="top"
-          />
-
-          {/* Botão inline de salvar */}
-          <TouchableOpacity
-            style={[
-              estilos.botaoSalvarNota,
-              salvando && estilos.botaoSalvarNotaDesabilitado,
-            ]}
-            onPress={handleSalvarNota}
-            disabled={salvando}
-            activeOpacity={0.8}
-          >
-            <Text style={estilos.textoBotaoSalvar}>
-              {salvando ? 'Salvando...' : 'Salvar nota'}
+            <Text style={estilos.textoBadgeTerracota}>
+              ✍️ {totalEntradas} {totalEntradas === 1 ? 'entrada' : 'entradas'}
             </Text>
-          </TouchableOpacity>
+          </View>
         </View>
 
-        {/* ── Cards de atalho ── */}
+        {/* ── Seção de atalhos rápidos ── */}
+        <Text style={estilos.secaoTitulo}>Atalhos rápidos</Text>
         <View style={estilos.filhaAtalhos}>
-          {/* Atalho — Escrever no Diário */}
+          {/* Card — Diário */}
           <TouchableOpacity
             style={[estilos.cardAtalho, estilos.cardAtalhoVerde]}
             onPress={irParaDiario}
             activeOpacity={0.85}
+            accessible
+            accessibilityLabel="Ir para o Diário"
+            accessibilityRole="button"
           >
-            <View style={estilos.atalhoIconeWrapper}>
+            <View style={[estilos.circuloIcone, estilos.circuloIconeVerde]}>
               <Feather
                 name="book-open"
-                size={22}
+                size={24}
                 color={ShelloTema.cores.marca}
               />
             </View>
-            <Text style={estilos.atalhoTitulo}>Escrever{'\n'}no Diário</Text>
-            <Text style={estilos.atalhoSubtexto}>Registre seu dia</Text>
+            <Text style={estilos.atalhoTitulo}>Diário</Text>
+            <Text style={estilos.atalhoSubtexto}>Registre seus pensamentos</Text>
           </TouchableOpacity>
 
-          {/* Atalho — Conversar com Shello */}
+          {/* Card — Tarefas */}
           <TouchableOpacity
             style={[estilos.cardAtalho, estilos.cardAtalhoTerracota]}
-            onPress={irParaChat}
+            onPress={irParaTarefas}
             activeOpacity={0.85}
+            accessible
+            accessibilityLabel="Ir para Tarefas"
+            accessibilityRole="button"
           >
-            <View style={estilos.atalhoIconeWrapper}>
+            <View style={[estilos.circuloIcone, estilos.circuloIconeTerracota]}>
               <Feather
-                name="zap"
-                size={22}
+                name="check-square"
+                size={24}
                 color="#B5856A"
               />
             </View>
             <Text style={[estilos.atalhoTitulo, estilos.atalhoTituloTerracota]}>
-              Conversar{'\n'}com Shello
+              Tarefas
             </Text>
-            <Text style={estilos.atalhoSubtexto}>Bater um papo</Text>
+            <Text style={estilos.atalhoSubtexto}>Organize sua rotina</Text>
           </TouchableOpacity>
         </View>
 
@@ -229,7 +166,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         <View style={estilos.espacamentoInferior} />
       </ScrollView>
 
-      {/* ── FAB redondo ── */}
+      {/* ── FAB com logo da tartaruga ── */}
       <Animated.View
         style={[estilos.fabWrapper, { transform: [{ scale: escalaFab }] }]}
       >
@@ -239,8 +176,15 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           onPressIn={handleFabPressIn}
           onPressOut={handleFabPressOut}
           activeOpacity={1}
+          accessible
+          accessibilityLabel="Abrir chat com Shello"
+          accessibilityRole="button"
         >
-          <Feather name="message-circle" size={24} color="#FFFFFF" />
+          <Image
+            source={require('../../assets/logoshello.jpeg')}
+            style={estilos.fabImagem}
+            resizeMode="cover"
+          />
         </TouchableOpacity>
         {/* Ponto laranja de notificação */}
         <View style={estilos.fabNotificacao} />
@@ -250,8 +194,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 }
 
 // ─── Estilos ──────────────────────────────────────────────────────────────────
-
-const { width: LARGURA_TELA } = Dimensions.get('window');
 
 const estilos = StyleSheet.create({
   // Layout base
@@ -272,15 +214,13 @@ const estilos = StyleSheet.create({
   cabecalho: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: ShelloTema.espacamento.sm,
     marginBottom: ShelloTema.espacamento.lg,
-  },
-  iconeCalendario: {
-    marginRight: ShelloTema.espacamento.xs,
   },
   textoData: {
     fontSize: 13,
     color: ShelloTema.cores.textoS,
-    fontFamily: Platform.OS === 'android' ? 'Roboto' : 'System',
+    letterSpacing: 0.2,
   },
 
   // ── Saudação ──
@@ -288,36 +228,37 @@ const estilos = StyleSheet.create({
     marginBottom: ShelloTema.espacamento.lg,
   },
   saudacaoLinha1: {
-    fontSize: 22,
-    fontFamily: 'serif',
+    fontSize: 28,
+    fontFamily: ShelloTema.tipografia.titulo,
     color: ShelloTema.cores.textoS,
-    lineHeight: 28,
+    lineHeight: 36,
   },
   saudacaoNome: {
-    fontSize: 32,
-    fontFamily: 'serif',
-    fontWeight: '700',
+    fontSize: 28,
+    fontFamily: ShelloTema.tipografia.titulo,
+    fontWeight: ShelloTema.tipografia.pesos.negrito,
     color: ShelloTema.cores.textoP,
-    lineHeight: 40,
+    lineHeight: 38,
     marginBottom: ShelloTema.espacamento.sm,
   },
   subtitulo: {
-    fontSize: 14,
+    fontSize: ShelloTema.tipografia.tamanhos.pequeno,
     fontStyle: 'italic',
     color: ShelloTema.cores.textoS,
-    lineHeight: 20,
+    lineHeight: ShelloTema.tipografia.alturaLinha,
   },
 
   // ── Badges ──
   filhaBadges: {
     flexDirection: 'row',
     gap: ShelloTema.espacamento.sm,
-    marginBottom: ShelloTema.espacamento.lg,
+    marginBottom: ShelloTema.espacamento.xl,
+    flexWrap: 'wrap',
   },
   badge: {
-    borderRadius: 50,
+    borderRadius: ShelloTema.forma.bordaPill,
     paddingHorizontal: ShelloTema.espacamento.md,
-    paddingVertical: ShelloTema.espacamento.sm,
+    paddingVertical: 6,
   },
   badgeVerde: {
     backgroundColor: ShelloTema.cores.marcaClaro,
@@ -326,81 +267,31 @@ const estilos = StyleSheet.create({
   },
   badgeTerracota: {
     backgroundColor: ShelloTema.cores.terracota,
+    borderWidth: 1,
+    borderColor: '#D4A896',
   },
   textoBadgeVerde: {
-    fontSize: 13,
+    fontSize: ShelloTema.tipografia.tamanhos.minusculo,
     color: ShelloTema.cores.marca,
-    fontWeight: '600',
+    fontWeight: ShelloTema.tipografia.pesos.medio,
+    letterSpacing: 0.2,
   },
   textoBadgeTerracota: {
-    fontSize: 13,
+    fontSize: ShelloTema.tipografia.tamanhos.minusculo,
     color: '#B5856A',
-    fontWeight: '600',
+    fontWeight: ShelloTema.tipografia.pesos.medio,
+    letterSpacing: 0.2,
   },
 
-  // ── Card central do diário ──
-  cardDiario: {
-    backgroundColor: ShelloTema.cores.superficie,
-    borderRadius: ShelloTema.forma.bordaGrande,
-    padding: ShelloTema.espacamento.lg,
-    marginBottom: ShelloTema.espacamento.lg,
-    ...ShelloTema.sombra.suave,
-  },
-  cardCabecalho: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: ShelloTema.espacamento.md,
-    gap: ShelloTema.espacamento.sm,
-  },
-  circuloIcone: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: ShelloTema.cores.marcaClaro,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardTitulo: {
-    fontSize: 18,
-    fontFamily: 'serif',
-    color: ShelloTema.cores.textoP,
-    fontWeight: '600',
-  },
-  cardPergunta: {
-    fontSize: 14,
+  // ── Seção de atalhos ──
+  secaoTitulo: {
+    fontSize: ShelloTema.tipografia.tamanhos.pequeno,
+    fontWeight: ShelloTema.tipografia.pesos.medio,
     color: ShelloTema.cores.textoS,
-    lineHeight: 20,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
     marginBottom: ShelloTema.espacamento.md,
-    fontStyle: 'italic',
   },
-  inputNota: {
-    backgroundColor: ShelloTema.cores.fundo,
-    borderRadius: ShelloTema.forma.bordaPequena,
-    padding: ShelloTema.espacamento.md,
-    fontSize: 15,
-    color: ShelloTema.cores.textoP,
-    minHeight: 90,
-    lineHeight: 22,
-    marginBottom: ShelloTema.espacamento.md,
-    textAlignVertical: 'top',
-  },
-  botaoSalvarNota: {
-    alignSelf: 'flex-end',
-    backgroundColor: ShelloTema.cores.marca,
-    borderRadius: 50,
-    paddingHorizontal: ShelloTema.espacamento.md,
-    paddingVertical: ShelloTema.espacamento.sm,
-  },
-  botaoSalvarNotaDesabilitado: {
-    opacity: 0.6,
-  },
-  textoBotaoSalvar: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-
-  // ── Cards de atalho ──
   filhaAtalhos: {
     flexDirection: 'row',
     gap: ShelloTema.espacamento.md,
@@ -408,9 +299,10 @@ const estilos = StyleSheet.create({
   cardAtalho: {
     flex: 1,
     borderRadius: ShelloTema.forma.bordaMedia,
-    padding: ShelloTema.espacamento.md,
-    minHeight: 140,
-    justifyContent: 'space-between',
+    padding: ShelloTema.espacamento.lg,
+    minHeight: 160,
+    justifyContent: 'flex-end',
+    ...ShelloTema.sombra.suave,
   },
   cardAtalhoVerde: {
     backgroundColor: ShelloTema.cores.marcaClaro,
@@ -418,32 +310,39 @@ const estilos = StyleSheet.create({
   cardAtalhoTerracota: {
     backgroundColor: ShelloTema.cores.terracota,
   },
-  atalhoIconeWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.5)',
+
+  // Círculo com ícone no topo do card
+  circuloIcone: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: ShelloTema.espacamento.sm,
+    marginBottom: ShelloTema.espacamento.md,
   },
-  atalhoTitulo: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: ShelloTema.cores.textoP,
-    lineHeight: 20,
-    flex: 1,
+  circuloIconeVerde: {
+    backgroundColor: 'rgba(94, 131, 106, 0.15)',
   },
-  atalhoTituloTerracota: {
-    color: ShelloTema.cores.textoP,
-  },
-  atalhoSubtexto: {
-    fontSize: 12,
-    color: ShelloTema.cores.textoS,
-    marginTop: ShelloTema.espacamento.xs,
+  circuloIconeTerracota: {
+    backgroundColor: 'rgba(181, 133, 106, 0.15)',
   },
 
-  // ── FAB ──
+  atalhoTitulo: {
+    fontSize: ShelloTema.tipografia.tamanhos.medio,
+    fontWeight: ShelloTema.tipografia.pesos.negrito,
+    color: ShelloTema.cores.textoP,
+    marginBottom: 4,
+  },
+  atalhoTituloTerracota: {
+    color: '#8B5E4A',
+  },
+  atalhoSubtexto: {
+    fontSize: ShelloTema.tipografia.tamanhos.minusculo,
+    color: ShelloTema.cores.textoS,
+    lineHeight: 16,
+  },
+
+  // ── FAB com logo ──
   fabWrapper: {
     position: 'absolute',
     bottom: ShelloTema.espacamento.xl,
@@ -453,25 +352,28 @@ const estilos = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: ShelloTema.cores.marca,
-    alignItems: 'center',
-    justifyContent: 'center',
+    overflow: 'hidden',
     ...ShelloTema.sombra.media,
+  },
+  fabImagem: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
   },
   fabNotificacao: {
     position: 'absolute',
-    top: 0,
+    top: 2,
     right: 2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 13,
+    height: 13,
+    borderRadius: 6.5,
     backgroundColor: '#E8895A',
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: ShelloTema.cores.fundo,
   },
 
   // Espaço para o FAB não cobrir conteúdo
   espacamentoInferior: {
-    height: 80,
+    height: 90,
   },
 });
