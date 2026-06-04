@@ -29,13 +29,14 @@ Toda a estilização deve seguir estritamente os tokens abaixo para garantir uma
 | **`accentTerracota`** | `#EADCD6` | Salmão/Terracota suave para CTAs secundários e botões |
 | **`error`** | `#DC3545` | Vermelho padrão para sinalização de atrasos ou exclusões |
 
-### Tipografia (`Roboto` Nativa Android)
+### Tipografia (Nativa Android & Custom Serif)
 
-A tipografia deve utilizar a família de fontes nativas `Roboto` no Android para obter alta performance e carregamento instantâneo.
+Para obter alta performance e um design extremamente premium, orgânico e relaxante, a tipografia combina duas famílias:
 
-* **Títulos de Seção / Saudações:** `Roboto-Bold` (24px), cor `textPrimary`.
-* **Corpo de Texto (Notas/Chat):** `Roboto-Regular` (15px), cor `textPrimary` ou `textSecondary`, aplicando obrigatoriamente `lineHeight: 22` para conforto ocular em leituras longas.
-* **Badges / Legendas:** `Roboto-Medium` (12px) com estilo em caixa alta ou capitalizado para tags de leitura rápida.
+* **Títulos Principais, Títulos de Seções e Saudações:** Serifada (ex: `serif` nativa no Android ou fonte customizada elegante como `Playfair Display` ou `Roboto Slab`), cor `textPrimary` com peso regular ou bold de acordo com o destaque.
+* **Corpo de Texto (Notas/Chat), Legendas, Badges e Inputs:** Sans-serif nativa `Roboto` (Regular/Medium/Bold).
+  - Corpo de texto aplica obrigatoriamente `lineHeight: 22` para conforto ocular em leituras longas.
+  - Badges e legendas utilizam `Roboto-Medium` (12px) com estilo sutil e espaçamento de letras adequado.
 
 ### Ícones
 
@@ -91,14 +92,26 @@ Para dar suporte ao **Front-end First com dados mockados**:
 
 ### 🌿 FLUXO DO HUB PRINCIPAL (`BottomTabNavigator`)
 
-A navegação principal do aplicativo deve utilizar o sistema de abas inferiores nativas do Android (`@react-navigation/bottom-tabs`), customizado com fundo `#FFFFFF` (`surface`), ícones Feather na cor `brandPrimary` (quando ativos) e `textSecondary` (quando inativos). As transições de troca de aba devem ser instantâneas ($<300\text{ms}$).
+A navegação principal do aplicativo deve utilizar o sistema de abas inferiores nativas do Android (`@react-navigation/bottom-tabs`), customizado com fundo `#FFFFFF` (`surface`), ícones Feather/Lucide na cor `brandPrimary` (quando ativos) e `textSecondary` (quando inativos). As transições de troca de aba devem ser instantâneas ($<300\text{ms}$).
+- **Customização Visual:** Para manter a estética dos mockups originais, o botão da aba central de **Chat Shello** pode ser estilizado de forma proeminente (ex: botão circular verde sálvia com o ícone de faísca/faíscas `sparkles` ou similar) destacando-se das demais abas.
 
 #### 3. Tela Home (`HomeScreen.tsx`)
 * **Layout & Estética:**
-  - Saudação personalizada e dinâmica: "Good morning, [Nome]" com tipografia `Roboto-Bold` (24px) carregada do contexto.
-  - **Cards de Métricas:** Dois badges horizontais destacados com `borderRadius: 24`:
-    - Badge verde claro (`brandLight`) com texto "7 day streak" 🔥.
-    - Badge terracota suave (`accentTerracota`) com texto "24 entries" ✍️.
+  - **Cabeçalho & Data:** No topo, exibição da data atual formatada como `[Dia da semana], [Mês] [Dia]` (ex: `Thursday, May 29`) precedido por um pequeno ícone de calendário.
+  - **Saudação Personalizada:** Exibida em duas linhas com fonte serifada proeminente (28px):
+    ```
+    Good morning,
+    [Nome]
+    ```
+  - **Subtítulo Inspiracional:** Logo abaixo da saudação, uma frase de contexto em itálico/cinza suave (`textSecondary`): "Your mind is a garden. Nurture it daily."
+  - **Cards de Métricas (Streaks & Entries):** Dois badges horizontais no estilo "pills" com `borderRadius: 24` e ícones outline:
+    - Badge verde claro (`brandLight` background, `brandPrimary` border/text): "7 day streak" 🔥 precedido por um pequeno círculo verde/bullet.
+    - Badge terracota suave (`accentTerracota` background, terracotta text): "24 entries" ✍️ precedido por um ícone de coração outline.
+  - **Card de Diário Rápido ("Today's Journal"):** Um card central branco (`surface`) de grande destaque com `borderRadius: 32`:
+    - Cabeçalho interno com ícone de folha verde em um círculo de fundo verde claro, seguido pelo título serifado "Today's Journal".
+    - Texto explicativo/prompt: "What moments brought you peace today? Reflect on the small victories and lessons learned."
+    - Mini container de input interno com bordas arredondadas e o placeholder "Start writing...".
+  - **Botão Flutuante do Mascote (Shello Assistant):** Um botão redondo flutuante no canto inferior direito contendo o rosto da tartaruga Shello. Este botão possui um gradiente de fundo metálico/glowing suave (verde sálvia/dourado/terracota) e uma pequena notificação circular laranja no topo direito para indicar respostas prontas da IA ou interações disponíveis.
   - **Atalhos Rápidos:** Dois cards grandes clicáveis em formato de botão vertical:
     - "Escrever no Diário" $\rightarrow$ Leva para a aba Diário.
     - "Conversar com o Shello" $\rightarrow$ Leva para a aba Chat.
@@ -115,10 +128,15 @@ A navegação principal do aplicativo deve utilizar o sistema de abas inferiores
 
 #### 5. Tela do Agente Shello (`ChatScreen.tsx`)
 * **Layout & Estética:**
-  - Cabeçalho minimalista com avatar circular da tartaruga Shello e status "Shello - Your AI Companion".
-  - Balões de mensagem arredondados (`borderRadius: 24`):
-    - Balões da IA: Alinhados à esquerda, cor de fundo `brandLight`, texto `textPrimary`.
-    - Balões do Usuário: Alinhados à direita, cor de fundo `brandPrimary`, texto `#FFFFFF`.
+  - **Cabeçalho:** Minimalista, com avatar circular da tartaruga Shello (com contorno metálico/gradiente e uma bolinha verde de status online no canto inferior direito) e o texto "Shello" com o subtítulo "Your AI Companion".
+  - **Balões de Mensagem:** Muito arredondados (`borderRadius: 24`):
+    - Balões da IA: Alinhados à esquerda, cor de fundo `surface` (branco puro), texto `textPrimary`, contendo o carimbo de data/hora (ex: `10:30 AM`) em cinza sutil no canto inferior esquerdo da mensagem.
+    - Balões do Usuário: Alinhados à direita, cor de fundo `brandPrimary` (verde sálvia), texto `#FFFFFF`.
+  - **Sugestões Iniciais ("Suggestions to get started"):** Um painel contendo três cards horizontais brancos arredondados (`borderRadius: 16`) com ícones minimalistas dentro de círculos verdes/cinza claros para incentivar a interação rápida:
+    - "Help me reflect on my day" (ícone de lâmpada)
+    - "Gratitude practice" (ícone de coração)
+    - "Journal prompt ideas" (ícone de livro/celular)
+  - **Barra de Entrada de Texto:** Um input no formato de pílula ("pill") com placeholder "Share your thoughts..." e um botão circular de envio verde/sage com um ícone de avião de papel branco.
 * **UX & Comportamento:**
   - Envio de mensagem: adiciona o balão do usuário imediatamente no histórico, limpa o campo e rola a lista para o fim.
   - **Pensamento da IA (Skeleton Shimmer):** Exibir um componente de loading contendo barrinhas com efeito de shimmer por `3 segundos`, feito de maneira customizada através da API `Animated` do React Native.
@@ -126,13 +144,22 @@ A navegação principal do aplicativo deve utilizar o sistema de abas inferiores
     > "Criar tarefa: [Título Mockado]?"
     - Com botões rápidos `[Confirmar]` (insere a tarefa no contexto/AsyncStorage de ToDo) e `[Cancelar]` (descarta a ação).
 
-#### 6. Tela de Tarefas (`ToDoScreen.tsx`)
+#### 6. Tela de Tarefas / Jornada (`ToDoScreen.tsx` ou `JourneyScreen.tsx`)
 * **Layout & Estética:**
-  - Filtro tipo tab-bar no topo: "Active" e "Completed".
-  - Lista de cards de tarefas com checkbox arredondado.
+  - **Título da Tela:** "Your Journey" em fonte serifada elegante, seguido pelo subtítulo "Organize your intentions and daily rituals" em cinza suave.
+  - **Seção "Today's Focus" (Lista de Tarefas/Intenções):**
+    - Título da seção acompanhado por um botão circular de adição (`+`) sobreposto a um fundo pêssego/laranja claro para criar novas tarefas.
+    - Lista de itens em formato de pílulas brancas arredondadas (`borderRadius: 24`).
+    - Cada item possui um checkbox circular à esquerda:
+      - Itens pendentes: Checkbox circular vazio, texto normal (`textPrimary`).
+      - Itens concluídos: Checkbox circular preenchido com checkmark verde, texto com cor cinza desbotada (`textSecondary`) e efeito tachado (strike-through).
+  - **Seção "Daily Routines" (Rotinas Diárias):**
+    - Cards de rotinas agrupadas (ex: "Morning routine", "Midday reset") com um fundo suave creme-esverdeado/bege e bordas arredondadas.
+    - Cada card de rotina possui um ícone identificador em um círculo branco (ex: Spark/Estrela para rotina da manhã com cor verde sálvia, Sol para reset do meio-dia).
+    - Lista interna de atividades bulleted (ex: "Wake at 7am", "Meditate", "Journal" para a rotina matinal).
 * **UX & Regra de Negócio Visual:**
   - Tarefas atrasadas/vencidas devem possuir visual de destaque: contorno ou borda lateral esquerda proeminente na cor `error` (`#DC3545`).
-  - Marcar o checkbox deve disparar uma animação de fade-out ou transição visual suave (usando `Animated`), removendo o item de "Active" e adicionando a "Completed".
+  - Marcar o checkbox deve disparar uma animação de fade-out ou transição visual suave (usando `Animated`), removendo o item de "Active" e adicionando a "Completed" ou atualizando o status do item na lista com risco e cor cinza.
 
 #### 7. Tela de Perfil e Painel (`ProfileScreen.tsx`)
 * **Layout & Estética:**
