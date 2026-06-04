@@ -1,61 +1,58 @@
-// TelaChat.tsx — Tela de conversa com a IA Shello
-// Inclui balões de mensagem, shimmer loader animado, sugestões rápidas e card de tarefa sugerida
+// TelaChat.tsx — Tela de conversa com a IA Shello (v3)
+// Mascote expressivo que responde com base no contexto do usuário.
+// Regra 4.1: limite de 20 mensagens por conversa.
+// Regra 4.2: card de confirmação de tarefa sugerida pela IA.
 
 import React, {
   useState,
-  useRef,
   useEffect,
+  useRef,
   useCallback,
 } from 'react';
 import {
   View,
   Text,
   TextInput,
-  FlatList,
   TouchableOpacity,
+  FlatList,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
   Animated,
   ScrollView,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { ShelloTema } from '../styles/tema';
 import { useShello } from '../contexts/ShelloContext';
-import { MensagemChat } from '../types';
+import { MensagemChat, ExpressaoShello } from '../types';
 
-// ─── Utilitário: hora atual formatada ────────────────────────────────────────
+// ─── Constantes ───────────────────────────────────────────────────────────────
+const LIMITE_MENSAGENS = 20;
 
-function obterHoraAtual(): string {
+// Sprite sheet: 4 quadros lado a lado (neutro, duvidoso, surpreso, feliz)
+const SPRITE_SHELLO = require('../../assets/shello-expressoes.jpeg');
+
+const INDICE_EXPRESSAO: Record<ExpressaoShello, number> = {
+  neutro: 0,
+  duvidoso: 1,
+  surpreso: 2,
+  feliz: 3,
+};
+
+// ─── Utilitários ──────────────────────────────────────────────────────────────
+
+function horaAtual(): string {
   const agora = new Date();
-  const horas = agora.getHours().toString().padStart(2, '0');
-  const minutos = agora.getMinutes().toString().padStart(2, '0');
-  return `${horas}:${minutos}`;
+  return `${agora.getHours().toString().padStart(2, '0')}:${agora.getMinutes().toString().padStart(2, '0')}`;
 }
-
-// ─── Utilitário: gerar ID único simples ──────────────────────────────────────
 
 function gerarId(): string {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
-// ─── Respostas mockadas da IA ─────────────────────────────────────────────────
-
-const RESPOSTAS_MOCKADAS: string[] = [
-  'Que reflexão poderosa! Me conta mais sobre como você está se sentindo nesse momento. 🌿',
-  'Adoro sua disposição para o crescimento! Vamos explorar isso juntos, passo a passo.',
-  'É muito bonito você dedicar tempo para si mesmo. O que você gostaria de sentir ao final do dia?',
-  'Sua intenção é clara e genuína. Que tal transformarmos isso em uma pequena ação concreta hoje?',
-  'Obrigado por compartilhar! Às vezes, colocar os pensamentos em palavras já é o primeiro passo.',
-];
-
-function obterRespostaMockada(): string {
-  const indice = Math.floor(Math.random() * RESPOSTAS_MOCKADAS.length);
-  return RESPOSTAS_MOCKADAS[indice];
-}
-
-// ─── Sugestões de mensagem rápida ────────────────────────────────────────────
+// ─── Sugestões rápidas ────────────────────────────────────────────────────────
 
 interface Sugestao {
   id: string;
@@ -64,30 +61,51 @@ interface Sugestao {
 }
 
 const SUGESTOES: Sugestao[] = [
-  { id: 's1', texto: 'Me ajude a refletir sobre o meu dia', icone: 'sun' },
+  { id: 's1', texto: 'Me ajude a refletir sobre meu dia', icone: 'sun' },
   { id: 's2', texto: 'Prática de gratidão', icone: 'heart' },
-  { id: 's3', texto: 'Ideias para o diário', icone: 'book' },
+  { id: 's3', texto: 'Ideias para o meu diário', icone: 'book-open' },
 ];
+
+// ─── Componente: AvatarShello ─────────────────────────────────────────────────
+
+interface AvatarShelloProps {
+  expressao: ExpressaoShello;
+  tamanho: number;
+}
+
+function AvatarShello({ expressao, tamanho }: AvatarShelloProps): React.JSX.Element {
+  const indice = INDICE_EXPRESSAO[expressao];
+  const deslocamento = -(tamanho * indice);
+
+  return (
+    <View
+      style={[
+        estilos.avatarContainer,
+        { width: tamanho, height: tamanho, borderRadius: tamanho / 2 },
+      ]}
+    >
+      <Image
+        source={SPRITE_SHELLO}
+        style={[
+          estilos.avatarSprite,
+          { width: tamanho * 4, height: tamanho, marginLeft: deslocamento },
+        ]}
+        resizeMode="cover"
+      />
+    </View>
+  );
+}
 
 // ─── Componente: ShimmerLoader ────────────────────────────────────────────────
 
-function ShimmerLoader(): React.JSX.Element {
-  // Animação de pulsação de opacidade para simular carregamento
+function ShimmerLoader({ expressao }: { expressao: ExpressaoShello }): React.JSX.Element {
   const opacidade = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
     const animacao = Animated.loop(
       Animated.sequence([
-        Animated.timing(opacidade, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacidade, {
-          toValue: 0.3,
-          duration: 800,
-          useNativeDriver: true,
-        }),
+        Animated.timing(opacidade, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(opacidade, { toValue: 0.3, duration: 700, useNativeDriver: true }),
       ])
     );
     animacao.start();
@@ -96,65 +114,11 @@ function ShimmerLoader(): React.JSX.Element {
 
   return (
     <View style={estilos.shimmerContainer}>
-      {/* Avatar da IA */}
-      <View style={estilos.avatarPequeno}>
-        <Feather name="cpu" size={14} color={ShelloTema.cores.superficie} />
-      </View>
+      <AvatarShello expressao={expressao} tamanho={28} />
       <View style={estilos.shimmerBalao}>
-        {/* Três barras de larguras diferentes para simular texto */}
-        <Animated.View
-          style={[estilos.shimmerBarra, { width: '70%', opacity: opacidade }]}
-        />
-        <Animated.View
-          style={[estilos.shimmerBarra, { width: '50%', opacity: opacidade }]}
-        />
-        <Animated.View
-          style={[estilos.shimmerBarra, { width: '85%', opacity: opacidade }]}
-        />
-      </View>
-    </View>
-  );
-}
-
-// ─── Componente: CardTarefaSugerida ──────────────────────────────────────────
-
-interface CardTarefaSugeridaProps {
-  titulo: string;
-  onConfirmar: () => void;
-  onCancelar: () => void;
-}
-
-function CardTarefaSugerida({
-  titulo,
-  onConfirmar,
-  onCancelar,
-}: CardTarefaSugeridaProps): React.JSX.Element {
-  return (
-    <View style={estilos.cardTarefa}>
-      <Feather
-        name="check-circle"
-        size={16}
-        color={ShelloTema.cores.marca}
-        style={estilos.cardTarefaIcone}
-      />
-      <Text style={estilos.cardTarefaTexto}>
-        Criar tarefa: "{titulo}"?
-      </Text>
-      <View style={estilos.cardTarefaBotoes}>
-        <TouchableOpacity
-          style={estilos.botaoConfirmar}
-          onPress={onConfirmar}
-          activeOpacity={0.8}
-        >
-          <Text style={estilos.botaoConfirmarTexto}>Confirmar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={estilos.botaoCancelar}
-          onPress={onCancelar}
-          activeOpacity={0.8}
-        >
-          <Text style={estilos.botaoCancelarTexto}>Cancelar</Text>
-        </TouchableOpacity>
+        <Animated.View style={[estilos.shimmerBarra, { width: '65%', opacity: opacidade }]} />
+        <Animated.View style={[estilos.shimmerBarra, { width: '45%', opacity: opacidade }]} />
+        <Animated.View style={[estilos.shimmerBarra, { width: '78%', opacity: opacidade }]} />
       </View>
     </View>
   );
@@ -162,43 +126,15 @@ function CardTarefaSugerida({
 
 // ─── Componente: BalaoChatIA ──────────────────────────────────────────────────
 
-interface BalaoChatIAProps {
-  mensagem: MensagemChat;
-  onConfirmarTarefa: (id: string, titulo: string) => void;
-  onCancelarTarefa: (id: string) => void;
-  tarefasCanceladas: Set<string>;
-}
-
-function BalaoChatIA({
-  mensagem,
-  onConfirmarTarefa,
-  onCancelarTarefa,
-  tarefasCanceladas,
-}: BalaoChatIAProps): React.JSX.Element {
-  const mostrarCardTarefa =
-    !!mensagem.tarefaSugerida && !tarefasCanceladas.has(mensagem.id);
-
+function BalaoChatIA({ mensagem }: { mensagem: MensagemChat }): React.JSX.Element {
+  const expressao: ExpressaoShello = mensagem.expressao ?? 'neutro';
   return (
     <View style={estilos.linhaIA}>
-      {/* Avatar da IA */}
-      <View style={estilos.avatarPequeno}>
-        <Feather name="cpu" size={14} color={ShelloTema.cores.superficie} />
-      </View>
+      <AvatarShello expressao={expressao} tamanho={30} />
       <View style={estilos.balaoIAWrapper}>
-        {/* Balão principal */}
         <View style={estilos.balaoIA}>
           <Text style={estilos.balaoIATexto}>{mensagem.conteudo}</Text>
         </View>
-        {/* Card de tarefa sugerida — exibido abaixo do balão */}
-        {mostrarCardTarefa && (
-          <CardTarefaSugerida
-            titulo={mensagem.tarefaSugerida!}
-            onConfirmar={() =>
-              onConfirmarTarefa(mensagem.id, mensagem.tarefaSugerida!)
-            }
-            onCancelar={() => onCancelarTarefa(mensagem.id)}
-          />
-        )}
         <Text style={estilos.horario}>{mensagem.horario}</Text>
       </View>
     </View>
@@ -207,20 +143,42 @@ function BalaoChatIA({
 
 // ─── Componente: BalaoChatUsuario ─────────────────────────────────────────────
 
-function BalaoChatUsuario({
-  mensagem,
-}: {
-  mensagem: MensagemChat;
-}): React.JSX.Element {
+function BalaoChatUsuario({ mensagem }: { mensagem: MensagemChat }): React.JSX.Element {
   return (
     <View style={estilos.linhaUsuario}>
       <View style={estilos.balaoUsuarioWrapper}>
         <View style={estilos.balaoUsuario}>
           <Text style={estilos.balaoUsuarioTexto}>{mensagem.conteudo}</Text>
         </View>
-        <Text style={[estilos.horario, estilos.horarioUsuario]}>
-          {mensagem.horario}
-        </Text>
+        <Text style={[estilos.horario, estilos.horarioUsuario]}>{mensagem.horario}</Text>
+      </View>
+    </View>
+  );
+}
+
+// ─── Componente: CardTarefaSugerida ───────────────────────────────────────────
+
+interface CardTarefaProps {
+  titulo: string;
+  aoConfirmar: () => void;
+  aoCancelar: () => void;
+}
+
+function CardTarefaSugerida({ titulo, aoConfirmar, aoCancelar }: CardTarefaProps): React.JSX.Element {
+  return (
+    <View style={estilos.cardTarefa}>
+      <View style={estilos.cardTarefaHeader}>
+        <Feather name="plus-circle" size={16} color={ShelloTema.cores.marca} />
+        <Text style={estilos.cardTarefaTitulo}>  Criar tarefa?</Text>
+      </View>
+      <Text style={estilos.cardTarefaTexto} numberOfLines={2}>{titulo}</Text>
+      <View style={estilos.cardTarefaBotoes}>
+        <TouchableOpacity style={estilos.botaoConfirmar} onPress={aoConfirmar} activeOpacity={0.8}>
+          <Text style={estilos.botaoConfirmarTexto}>✓ Confirmar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={estilos.botaoCancelar} onPress={aoCancelar} activeOpacity={0.7}>
+          <Text style={estilos.botaoCancelarTexto}>Cancelar</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -229,97 +187,179 @@ function BalaoChatUsuario({
 // ─── Tela Principal: TelaChat ─────────────────────────────────────────────────
 
 export default function TelaChat(): React.JSX.Element {
-  const { adicionarTarefa } = useShello();
+  const { nomeUsuario, dadosOnboarding, memorias, entradas, adicionarTarefa } = useShello();
 
-  // ── Estado local ──────────────────────────────────────────────────────────
-  const [mensagens, setMensagens] = useState<MensagemChat[]>([
-    {
-      id: gerarId(),
-      remetente: 'ia',
-      conteudo:
-        'Olá! Sou o Shello, seu companheiro de crescimento pessoal. Como posso te ajudar hoje? 🌿',
-      horario: obterHoraAtual(),
-    },
-  ]);
+  const [mensagens, setMensagens] = useState<MensagemChat[]>([]);
   const [inputTexto, setInputTexto] = useState('');
   const [pensando, setPensando] = useState(false);
-  // IDs das mensagens cujo card de tarefa foi cancelado pelo usuário
-  const [tarefasCanceladas, setTarefasCanceladas] = useState<Set<string>>(
-    new Set()
-  );
+  const [expressaoAtual, setExpressaoAtual] = useState<ExpressaoShello>('feliz');
+  const [tarefaSugerida, setTarefaSugerida] = useState<string | null>(null);
+  const [confirmacaoTarefa, setConfirmacaoTarefa] = useState<string | null>(null);
 
   const flatListRef = useRef<FlatList<MensagemChat>>(null);
 
-  // ── Exibir sugestões apenas quando há poucas mensagens ───────────────────
-  const mostrarSugestoes = mensagens.length < 2;
+  // Contagem de mensagens do usuário (apenas dele, para o limite)
+  const totalMensagens = mensagens.length;
+  const atingiuLimite = totalMensagens >= LIMITE_MENSAGENS;
 
-  // ── Enviar mensagem do usuário e acionar resposta da IA ──────────────────
-  const enviarMensagem = useCallback(
-    (texto: string) => {
-      const textoTrimado = texto.trim();
-      if (!textoTrimado || pensando) return;
-
-      // Adiciona mensagem do usuário
-      const novaMensagemUsuario: MensagemChat = {
-        id: gerarId(),
-        remetente: 'usuario',
-        conteudo: textoTrimado,
-        horario: obterHoraAtual(),
-      };
-
-      setMensagens((anterior) => [novaMensagemUsuario, ...anterior]);
-      setInputTexto('');
-      setPensando(true);
-
-      // Simula resposta da IA após 3 segundos
-      setTimeout(() => {
-        const respostaTexto = obterRespostaMockada();
-        const novaMensagemIA: MensagemChat = {
-          id: gerarId(),
-          remetente: 'ia',
-          conteudo: respostaTexto,
-          horario: obterHoraAtual(),
-          // Card de tarefa sugerida junto com a resposta mockada
-          tarefaSugerida: 'Meditar por 10 minutos',
-        };
-        setMensagens((anterior) => [novaMensagemIA, ...anterior]);
-        setPensando(false);
-      }, 3000);
-    },
-    [pensando]
-  );
-
-  // ── Confirmar criação de tarefa sugerida ─────────────────────────────────
-  const confirmarTarefa = useCallback(
-    async (idMensagem: string, tituloTarefa: string) => {
-      await adicionarTarefa(tituloTarefa);
-      // Remove o card de tarefa após confirmação ocultando-o via canceladas
-      setTarefasCanceladas((anterior) => new Set([...anterior, idMensagem]));
-    },
-    [adicionarTarefa]
-  );
-
-  // ── Cancelar card de tarefa sugerida ─────────────────────────────────────
-  const cancelarTarefa = useCallback((idMensagem: string) => {
-    setTarefasCanceladas((anterior) => new Set([...anterior, idMensagem]));
+  // ── Mensagem de boas-vindas ──────────────────────────────────────────────
+  useEffect(() => {
+    const nome = nomeUsuario || 'amigo';
+    const boasVindas: MensagemChat = {
+      id: gerarId(),
+      remetente: 'ia',
+      conteudo: `Olá, ${nome}! 🌿 Sou o Shello, seu companheiro de crescimento pessoal. O que você quer explorar hoje?`,
+      horario: horaAtual(),
+      expressao: 'feliz',
+    };
+    setMensagens([boasVindas]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Renderiza cada item da FlatList invertida ─────────────────────────────
-  const renderizarMensagem = useCallback(
-    ({ item }: { item: MensagemChat }) => {
-      if (item.remetente === 'ia') {
-        return (
-          <BalaoChatIA
-            mensagem={item}
-            onConfirmarTarefa={confirmarTarefa}
-            onCancelarTarefa={cancelarTarefa}
-            tarefasCanceladas={tarefasCanceladas}
-          />
-        );
+  const mostrarSugestoes = mensagens.length < 3;
+
+  // ── Gerador de respostas mockadas contextualizadas ───────────────────────
+  const gerarResposta = useCallback(
+    (pergunta: string): { texto: string; expressao: ExpressaoShello; tarefaSug?: string } => {
+      const txt = pergunta.toLowerCase();
+      const nome = nomeUsuario || 'você';
+      const meta = dadosOnboarding?.metaAtual || 'seus objetivos';
+      const estilo = dadosOnboarding?.estiloDeVida || 'seu estilo de vida';
+      const qtdMem = memorias.length;
+      const qtdEnt = entradas.length;
+
+      if (txt.includes('meta') || txt.includes('objetivo') || txt.includes('melhorar')) {
+        return {
+          texto: `${nome}, você mencionou que quer melhorar "${meta}". Que tal definirmos um pequeno passo para hoje? 🎯`,
+          expressao: 'feliz',
+          tarefaSug: `Pequeno passo rumo a: ${meta}`,
+        };
       }
-      return <BalaoChatUsuario mensagem={item} />;
+      if (txt.includes('diário') || txt.includes('registro') || txt.includes('escrever')) {
+        const pl = qtdEnt === 1 ? 'registro' : 'registros';
+        return {
+          texto: `Você tem ${qtdEnt} ${pl} no diário. Escrever regularmente é uma das práticas mais poderosas! ✍️`,
+          expressao: 'feliz',
+        };
+      }
+      if (txt.includes('triste') || txt.includes('difícil') || txt.includes('cansado') || txt.includes('mal')) {
+        return {
+          texto: `Eu entendo, ${nome}. O que você está sentindo tem valor. Quer me contar mais?`,
+          expressao: 'duvidoso',
+        };
+      }
+      if (txt.includes('quem') || txt.includes('você é') || txt.includes('shello')) {
+        const plM = qtdMem === 1 ? 'memória' : 'memórias';
+        return {
+          texto: `Sou o Shello, seu companheiro de crescimento. Já guardei ${qtdMem} ${plM} sobre você! 🐢`,
+          expressao: 'surpreso',
+        };
+      }
+      if (txt.includes('gratidão') || txt.includes('agradecer') || txt.includes('feliz')) {
+        return {
+          texto: `Que lindo, ${nome}! Tente listar 3 coisas pelas quais você é grato hoje. 🌸`,
+          expressao: 'feliz',
+          tarefaSug: 'Listar 3 gratidões do dia',
+        };
+      }
+      if (txt.includes('rotina') || txt.includes('estilo') || txt.includes('dia a dia')) {
+        return {
+          texto: `Você me contou que seu estilo de vida é: "${estilo}". Posso te ajudar a criar rotinas mais alinhadas com quem você quer ser!`,
+          expressao: 'neutro',
+        };
+      }
+      if (txt.includes('refletir') || txt.includes('dia') || txt.includes('hoje')) {
+        return {
+          texto: `Refletir sobre o dia é poderoso, ${nome}. O que foi mais significativo para você hoje? Que momento te marcou?`,
+          expressao: 'neutro',
+          tarefaSug: 'Reflexão diária antes de dormir',
+        };
+      }
+      // resposta padrão
+      const sugerirTarefa = Math.random() < 0.25;
+      return {
+        texto: `Interessante, ${nome}. Cada reflexão que você faz me ajuda a te conhecer melhor. Quer explorar mais esse tema?`,
+        expressao: 'neutro',
+        tarefaSug: sugerirTarefa ? 'Explorar esse tema no diário' : undefined,
+      };
     },
-    [confirmarTarefa, cancelarTarefa, tarefasCanceladas]
+    [nomeUsuario, dadosOnboarding, memorias, entradas]
+  );
+
+  // ── Enviar mensagem ──────────────────────────────────────────────────────
+  const enviarMensagem = useCallback(
+    (texto: string) => {
+      const txt = texto.trim();
+      if (!txt || pensando || atingiuLimite) return;
+
+      const msgUsuario: MensagemChat = {
+        id: gerarId(),
+        remetente: 'usuario',
+        conteudo: txt,
+        horario: horaAtual(),
+      };
+      setMensagens((ant) => [msgUsuario, ...ant]);
+      setInputTexto('');
+      setPensando(true);
+      setTarefaSugerida(null);
+      setConfirmacaoTarefa(null);
+
+      setTimeout(() => {
+        const resposta = gerarResposta(txt);
+        setExpressaoAtual(resposta.expressao);
+
+        const msgIA: MensagemChat = {
+          id: gerarId(),
+          remetente: 'ia',
+          conteudo: resposta.texto,
+          horario: horaAtual(),
+          expressao: resposta.expressao,
+        };
+        setMensagens((ant) => [msgIA, ...ant]);
+        setPensando(false);
+
+        if (resposta.tarefaSug) {
+          setTarefaSugerida(resposta.tarefaSug);
+        }
+      }, 2800);
+    },
+    [pensando, atingiuLimite, gerarResposta]
+  );
+
+  // ── Confirmar tarefa sugerida ────────────────────────────────────────────
+  const confirmarTarefa = useCallback(async () => {
+    if (!tarefaSugerida) return;
+    try {
+      await adicionarTarefa(tarefaSugerida);
+      setConfirmacaoTarefa(tarefaSugerida);
+    } catch (e) {
+      console.error('Erro ao adicionar tarefa:', e);
+    } finally {
+      setTarefaSugerida(null);
+    }
+  }, [tarefaSugerida, adicionarTarefa]);
+
+  // ── Novo chat ────────────────────────────────────────────────────────────
+  const iniciarNovoChat = useCallback(() => {
+    const nome = nomeUsuario || 'amigo';
+    const novaBoasVindas: MensagemChat = {
+      id: gerarId(),
+      remetente: 'ia',
+      conteudo: `Nova conversa! 🌿 Estou aqui, ${nome}. O que você quer explorar agora?`,
+      horario: horaAtual(),
+      expressao: 'feliz',
+    };
+    setMensagens([novaBoasVindas]);
+    setTarefaSugerida(null);
+    setConfirmacaoTarefa(null);
+    setExpressaoAtual('feliz');
+  }, [nomeUsuario]);
+
+  // ── Renderização de mensagem ──────────────────────────────────────────────
+  const renderMensagem = useCallback(
+    ({ item }: { item: MensagemChat }) =>
+      item.remetente === 'ia' ? <BalaoChatIA mensagem={item} /> : <BalaoChatUsuario mensagem={item} />,
+    []
   );
 
   return (
@@ -329,24 +369,38 @@ export default function TelaChat(): React.JSX.Element {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        {/* ── Cabeçalho ────────────────────────────────────────────────── */}
+        {/* ── Cabeçalho ─────────────────────────────────────────────────── */}
         <View style={estilos.cabecalho}>
-          {/* Avatar com indicador de status online */}
           <View style={estilos.avatarWrapper}>
-            <View style={estilos.avatarGrande}>
-              <Feather name="cpu" size={28} color={ShelloTema.cores.superficie} />
-            </View>
-            {/* Bolinha verde de status online */}
+            <AvatarShello expressao={expressaoAtual} tamanho={48} />
             <View style={estilos.statusOnline} />
           </View>
-          {/* Informações de texto do cabeçalho */}
           <View style={estilos.cabecalhoTextos}>
             <Text style={estilos.cabecalhoNome}>Shello</Text>
             <Text style={estilos.cabecalhoSubtitulo}>Seu Companheiro de IA</Text>
           </View>
+          {/* Contador de mensagens */}
+          <View style={estilos.contadorWrapper}>
+            <Text style={[estilos.contadorTexto, atingiuLimite && estilos.contadorTextoAlerta]}>
+              {totalMensagens}/{LIMITE_MENSAGENS}
+            </Text>
+          </View>
         </View>
 
-        {/* ── Cards de sugestões rápidas ───────────────────────────────── */}
+        {/* ── Banner de limite atingido ──────────────────────────────────── */}
+        {atingiuLimite && (
+          <View style={estilos.bannerLimite}>
+            <Feather name="alert-circle" size={16} color="#8B5E3C" />
+            <Text style={estilos.bannerLimiteTexto}>
+              {'  '}Você atingiu o limite desta conversa.
+            </Text>
+            <TouchableOpacity style={estilos.botaoNovoChat} onPress={iniciarNovoChat} activeOpacity={0.8}>
+              <Text style={estilos.botaoNovoChatTexto}>Novo Chat</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ── Sugestões rápidas ─────────────────────────────────────────── */}
         {mostrarSugestoes && (
           <ScrollView
             horizontal
@@ -354,63 +408,83 @@ export default function TelaChat(): React.JSX.Element {
             style={estilos.sugestoesScroll}
             contentContainerStyle={estilos.sugestoesContent}
           >
-            {SUGESTOES.map((sugestao) => (
+            {SUGESTOES.map((s) => (
               <TouchableOpacity
-                key={sugestao.id}
+                key={s.id}
                 style={estilos.cardSugestao}
-                onPress={() => enviarMensagem(sugestao.texto)}
+                onPress={() => enviarMensagem(s.texto)}
                 activeOpacity={0.75}
               >
-                <View style={estilos.cardSugestaoIconeWrapper}>
-                  <Feather
-                    name={sugestao.icone}
-                    size={18}
-                    color={ShelloTema.cores.marca}
-                  />
+                <View style={estilos.cardSugestaoIcone}>
+                  <Feather name={s.icone} size={17} color={ShelloTema.cores.marca} />
                 </View>
-                <Text style={estilos.cardSugestaoTexto}>{sugestao.texto}</Text>
+                <Text style={estilos.cardSugestaoTexto}>{s.texto}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         )}
 
-        {/* ── Lista de mensagens (invertida) ───────────────────────────── */}
+        {/* ── Lista de mensagens ────────────────────────────────────────── */}
         <FlatList
           ref={flatListRef}
           data={mensagens}
           keyExtractor={(item) => item.id}
-          renderItem={renderizarMensagem}
+          renderItem={renderMensagem}
           inverted
           contentContainerStyle={estilos.listaMensagens}
           showsVerticalScrollIndicator={false}
-          // Shimmer de "pensando" aparece no topo da lista invertida (= fundo visual)
-          ListHeaderComponent={pensando ? <ShimmerLoader /> : null}
+          ListHeaderComponent={
+            pensando ? <ShimmerLoader expressao={expressaoAtual} /> : null
+          }
         />
 
-        {/* ── Barra de entrada de texto ─────────────────────────────────── */}
+        {/* ── Card de tarefa sugerida ───────────────────────────────────── */}
+        {tarefaSugerida && (
+          <CardTarefaSugerida
+            titulo={tarefaSugerida}
+            aoConfirmar={confirmarTarefa}
+            aoCancelar={() => setTarefaSugerida(null)}
+          />
+        )}
+
+        {/* ── Feedback de tarefa confirmada ─────────────────────────────── */}
+        {confirmacaoTarefa && (
+          <View style={estilos.feedbackTarefa}>
+            <Feather name="check-circle" size={15} color={ShelloTema.cores.marca} />
+            <Text style={estilos.feedbackTarefaTexto}>  Tarefa adicionada à sua jornada!</Text>
+          </View>
+        )}
+
+        {/* ── Barra de entrada ─────────────────────────────────────────── */}
         <View style={estilos.barraEntrada}>
           <TextInput
-            style={estilos.input}
+            style={[estilos.input, atingiuLimite && estilos.inputDesabilitado]}
             value={inputTexto}
             onChangeText={setInputTexto}
-            placeholder="Compartilhe seus pensamentos..."
+            placeholder={atingiuLimite ? 'Inicie um novo chat para continuar...' : 'Compartilhe seus pensamentos...'}
             placeholderTextColor={ShelloTema.cores.textoS}
             multiline
             maxLength={500}
+            editable={!atingiuLimite}
             returnKeyType="default"
           />
-          {/* Botão de envio circular */}
-          <TouchableOpacity
-            style={[
-              estilos.botaoEnviar,
-              !inputTexto.trim() && estilos.botaoEnviarDesabilitado,
-            ]}
-            onPress={() => enviarMensagem(inputTexto)}
-            activeOpacity={0.8}
-            disabled={!inputTexto.trim() || pensando}
-          >
-            <Feather name="send" size={22} color={ShelloTema.cores.superficie} />
-          </TouchableOpacity>
+          {atingiuLimite ? (
+            <TouchableOpacity style={estilos.botaoNovoChat2} onPress={iniciarNovoChat} activeOpacity={0.8}>
+              <Feather name="refresh-cw" size={18} color={ShelloTema.cores.superficie} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[
+                estilos.botaoEnviar,
+                (!inputTexto.trim() || pensando) && estilos.botaoEnviarDesabilitado,
+              ]}
+              onPress={() => enviarMensagem(inputTexto)}
+              activeOpacity={0.8}
+              disabled={!inputTexto.trim() || pensando}
+            >
+              <Feather name="send" size={20} color={ShelloTema.cores.superficie} />
+            </TouchableOpacity>
+          )}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -420,16 +494,10 @@ export default function TelaChat(): React.JSX.Element {
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 
 const estilos = StyleSheet.create({
-  // ── Estrutura base ────────────────────────────────────────────────────────
-  safeArea: {
-    flex: 1,
-    backgroundColor: ShelloTema.cores.fundo,
-  },
-  tela: {
-    flex: 1,
-  },
+  safeArea: { flex: 1, backgroundColor: ShelloTema.cores.fundo },
+  tela: { flex: 1 },
 
-  // ── Cabeçalho ─────────────────────────────────────────────────────────────
+  // Cabeçalho
   cabecalho: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -438,26 +506,15 @@ const estilos = StyleSheet.create({
     backgroundColor: ShelloTema.cores.superficie,
     borderBottomWidth: 1,
     borderBottomColor: ShelloTema.cores.marcaClaro,
-    // Sombra suave no cabeçalho
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 3,
   },
-  avatarWrapper: {
-    position: 'relative',
-    marginRight: ShelloTema.espacamento.md,
-  },
-  avatarGrande: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: ShelloTema.cores.marca,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // Indicador de status online — bolinha verde no canto inferior direito
+  avatarWrapper: { position: 'relative', marginRight: ShelloTema.espacamento.md },
+  avatarContainer: { overflow: 'hidden', backgroundColor: ShelloTema.cores.marcaClaro },
+  avatarSprite: {},
   statusOnline: {
     position: 'absolute',
     bottom: 0,
@@ -469,44 +526,57 @@ const estilos = StyleSheet.create({
     borderWidth: 2,
     borderColor: ShelloTema.cores.superficie,
   },
-  cabecalhoTextos: {
-    flex: 1,
-  },
+  cabecalhoTextos: { flex: 1 },
   cabecalhoNome: {
     fontSize: 17,
     fontWeight: 'bold',
     color: ShelloTema.cores.textoP,
     letterSpacing: 0.2,
   },
-  cabecalhoSubtitulo: {
-    fontSize: 12,
-    color: ShelloTema.cores.textoS,
-    marginTop: 1,
-  },
+  cabecalhoSubtitulo: { fontSize: 12, color: ShelloTema.cores.textoS, marginTop: 1 },
+  contadorWrapper: { alignItems: 'center' },
+  contadorTexto: { fontSize: 11, color: ShelloTema.cores.textoS, fontWeight: '500' },
+  contadorTextoAlerta: { color: ShelloTema.cores.erro, fontWeight: '700' },
 
-  // ── Cards de sugestão ─────────────────────────────────────────────────────
-  sugestoesScroll: {
-    flexGrow: 0,
-    paddingVertical: ShelloTema.espacamento.md,
-  },
-  sugestoesContent: {
+  // Banner de limite
+  bannerLimite: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: ShelloTema.cores.terracota,
     paddingHorizontal: ShelloTema.espacamento.md,
-    gap: ShelloTema.espacamento.sm,
+    paddingVertical: ShelloTema.espacamento.sm,
   },
+  bannerLimiteTexto: {
+    flex: 1,
+    fontSize: 13,
+    color: '#8B5E3C',
+    fontWeight: '500',
+  },
+  botaoNovoChat: {
+    backgroundColor: ShelloTema.cores.marca,
+    borderRadius: ShelloTema.forma.bordaPill,
+    paddingHorizontal: ShelloTema.espacamento.md,
+    paddingVertical: ShelloTema.espacamento.xs,
+  },
+  botaoNovoChatTexto: { fontSize: 13, color: '#FFF', fontWeight: '700' },
+
+  // Sugestões
+  sugestoesScroll: { flexGrow: 0, paddingVertical: ShelloTema.espacamento.md },
+  sugestoesContent: { paddingHorizontal: ShelloTema.espacamento.md },
   cardSugestao: {
     backgroundColor: ShelloTema.cores.superficie,
     borderRadius: ShelloTema.forma.bordaPequena,
     padding: ShelloTema.espacamento.md,
     maxWidth: 160,
     minWidth: 130,
-    // Sombra suave
+    marginRight: ShelloTema.espacamento.sm,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  cardSugestaoIconeWrapper: {
+  cardSugestaoIcone: {
     width: 32,
     height: 32,
     borderRadius: 16,
@@ -518,93 +588,68 @@ const estilos = StyleSheet.create({
   cardSugestaoTexto: {
     fontSize: 12,
     color: ShelloTema.cores.textoP,
-    lineHeight: 17,
+    lineHeight: 16,
     fontWeight: '500',
   },
 
-  // ── Lista de mensagens ────────────────────────────────────────────────────
+  // Lista
   listaMensagens: {
     paddingHorizontal: ShelloTema.espacamento.md,
     paddingVertical: ShelloTema.espacamento.sm,
   },
 
-  // ── Balão da IA ───────────────────────────────────────────────────────────
+  // Balão IA
   linhaIA: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     marginBottom: ShelloTema.espacamento.md,
   },
-  avatarPequeno: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: ShelloTema.cores.marca,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: ShelloTema.espacamento.sm,
-    flexShrink: 0,
-  },
   balaoIAWrapper: {
     flex: 1,
     alignItems: 'flex-start',
     maxWidth: '80%',
+    marginLeft: ShelloTema.espacamento.sm,
   },
   balaoIA: {
     backgroundColor: ShelloTema.cores.superficie,
     borderRadius: ShelloTema.forma.bordaMedia,
-    // Cantos: sem canto superior esquerdo (próximo ao avatar)
     borderTopLeftRadius: 4,
-    padding: ShelloTema.espacamento.md,
-    // Sombra suave
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 6,
     elevation: 2,
   },
-  balaoIATexto: {
-    fontSize: 15,
-    color: ShelloTema.cores.textoP,
-    lineHeight: 22,
-  },
+  balaoIATexto: { fontSize: 15, color: ShelloTema.cores.textoP, lineHeight: 22 },
 
-  // ── Balão do usuário ──────────────────────────────────────────────────────
+  // Balão Usuário
   linhaUsuario: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     marginBottom: ShelloTema.espacamento.md,
   },
-  balaoUsuarioWrapper: {
-    alignItems: 'flex-end',
-    maxWidth: '80%',
-  },
+  balaoUsuarioWrapper: { alignItems: 'flex-end', maxWidth: '80%' },
   balaoUsuario: {
     backgroundColor: ShelloTema.cores.marca,
     borderRadius: ShelloTema.forma.bordaMedia,
-    // Cantos: sem canto superior direito
     borderTopRightRadius: 4,
-    padding: ShelloTema.espacamento.md,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
-  balaoUsuarioTexto: {
-    fontSize: 15,
-    color: ShelloTema.cores.superficie,
-    lineHeight: 22,
-  },
+  balaoUsuarioTexto: { fontSize: 15, color: '#FFF', lineHeight: 22 },
 
-  // ── Horário das mensagens ─────────────────────────────────────────────────
+  // Horário
   horario: {
     fontSize: 11,
     color: ShelloTema.cores.textoS,
     marginTop: ShelloTema.espacamento.xs,
     marginLeft: ShelloTema.espacamento.xs,
   },
-  horarioUsuario: {
-    marginLeft: 0,
-    marginRight: ShelloTema.espacamento.xs,
-    textAlign: 'right',
-  },
+  horarioUsuario: { marginLeft: 0, marginRight: ShelloTema.espacamento.xs, textAlign: 'right' },
 
-  // ── Shimmer loader (IA pensando) ──────────────────────────────────────────
+  // Shimmer
   shimmerContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -615,10 +660,11 @@ const estilos = StyleSheet.create({
     backgroundColor: ShelloTema.cores.superficie,
     borderRadius: ShelloTema.forma.bordaMedia,
     borderTopLeftRadius: 4,
-    padding: ShelloTema.espacamento.md,
+    paddingVertical: ShelloTema.espacamento.md,
+    paddingHorizontal: ShelloTema.espacamento.md,
     gap: ShelloTema.espacamento.sm,
     maxWidth: '75%',
-    // Sombra suave
+    marginLeft: ShelloTema.espacamento.sm,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -626,62 +672,74 @@ const estilos = StyleSheet.create({
     elevation: 2,
   },
   shimmerBarra: {
-    height: 14,
+    height: 12,
     borderRadius: 8,
     backgroundColor: ShelloTema.cores.marcaClaro,
   },
 
-  // ── Card de tarefa sugerida ───────────────────────────────────────────────
+  // Card de tarefa sugerida
   cardTarefa: {
-    backgroundColor: ShelloTema.cores.marcaClaro,
-    borderRadius: ShelloTema.forma.bordaPequena,
+    marginHorizontal: ShelloTema.espacamento.md,
+    marginBottom: ShelloTema.espacamento.sm,
+    backgroundColor: ShelloTema.cores.superficie,
+    borderRadius: ShelloTema.forma.bordaMedia,
     padding: ShelloTema.espacamento.md,
-    marginTop: ShelloTema.espacamento.sm,
-    width: '100%',
+    borderLeftWidth: 3,
+    borderLeftColor: ShelloTema.cores.marca,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  cardTarefaIcone: {
-    marginBottom: ShelloTema.espacamento.xs,
+  cardTarefaHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  cardTarefaTitulo: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: ShelloTema.cores.marca,
+    letterSpacing: 0.2,
   },
   cardTarefaTexto: {
-    fontSize: 13,
+    fontSize: 14,
     color: ShelloTema.cores.textoP,
-    fontWeight: '500',
-    marginBottom: ShelloTema.espacamento.sm,
-    lineHeight: 19,
+    marginBottom: ShelloTema.espacamento.md,
+    lineHeight: 20,
   },
-  cardTarefaBotoes: {
-    flexDirection: 'row',
-    gap: ShelloTema.espacamento.sm,
-  },
+  cardTarefaBotoes: { flexDirection: 'row', gap: ShelloTema.espacamento.sm },
   botaoConfirmar: {
+    flex: 1,
     backgroundColor: ShelloTema.cores.marca,
-    borderRadius: 50,
-    paddingVertical: ShelloTema.espacamento.xs + 2,
-    paddingHorizontal: ShelloTema.espacamento.md,
+    borderRadius: ShelloTema.forma.bordaPill,
+    paddingVertical: ShelloTema.espacamento.sm,
+    alignItems: 'center',
   },
-  botaoConfirmarTexto: {
-    fontSize: 12,
-    color: ShelloTema.cores.superficie,
-    fontWeight: '700',
-  },
+  botaoConfirmarTexto: { fontSize: 13, color: '#FFF', fontWeight: '700' },
   botaoCancelar: {
-    backgroundColor: ShelloTema.cores.terracota,
-    borderRadius: 50,
-    paddingVertical: ShelloTema.espacamento.xs + 2,
-    paddingHorizontal: ShelloTema.espacamento.md,
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: ShelloTema.cores.textoS,
+    borderRadius: ShelloTema.forma.bordaPill,
+    paddingVertical: ShelloTema.espacamento.sm,
+    alignItems: 'center',
   },
-  botaoCancelarTexto: {
-    fontSize: 12,
-    color: ShelloTema.cores.textoP,
-    fontWeight: '600',
-  },
+  botaoCancelarTexto: { fontSize: 13, color: ShelloTema.cores.textoS, fontWeight: '600' },
 
-  // ── Barra de entrada ──────────────────────────────────────────────────────
+  // Feedback tarefa confirmada
+  feedbackTarefa: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: ShelloTema.espacamento.lg,
+    paddingVertical: ShelloTema.espacamento.xs,
+    backgroundColor: ShelloTema.cores.marcaClaro,
+  },
+  feedbackTarefaTexto: { fontSize: 13, color: ShelloTema.cores.marca, fontWeight: '600' },
+
+  // Barra de entrada
   barraEntrada: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: ShelloTema.espacamento.md,
-    paddingVertical: ShelloTema.espacamento.md,
+    paddingTop: ShelloTema.espacamento.md,
     paddingBottom: ShelloTema.espacamento.lg,
     backgroundColor: ShelloTema.cores.fundo,
     gap: ShelloTema.espacamento.sm,
@@ -692,19 +750,19 @@ const estilos = StyleSheet.create({
     flex: 1,
     backgroundColor: ShelloTema.cores.superficie,
     borderRadius: 50,
-    paddingHorizontal: ShelloTema.espacamento.lg,
-    paddingVertical: ShelloTema.espacamento.md,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
     fontSize: 15,
     color: ShelloTema.cores.textoP,
     maxHeight: 120,
     lineHeight: 22,
-    // Sombra suave
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 2,
   },
+  inputDesabilitado: { backgroundColor: ShelloTema.cores.fundo, color: ShelloTema.cores.textoS },
   botaoEnviar: {
     width: 52,
     height: 52,
@@ -712,7 +770,6 @@ const estilos = StyleSheet.create({
     backgroundColor: ShelloTema.cores.marca,
     alignItems: 'center',
     justifyContent: 'center',
-    // Sombra do botão de envio
     shadowColor: ShelloTema.cores.marca,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
@@ -723,5 +780,18 @@ const estilos = StyleSheet.create({
     backgroundColor: ShelloTema.cores.marcaClaro,
     shadowOpacity: 0,
     elevation: 0,
+  },
+  botaoNovoChat2: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: ShelloTema.cores.marca,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: ShelloTema.cores.marca,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 6,
   },
 });
