@@ -1,13 +1,15 @@
 // TelaPerfil.tsx — Tela de Perfil do Usuário
 // Exibe dados do perfil, personalidade da IA, memórias e opções de conta
 
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   View,
   Text,
+  Image,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  TextInput,
   Animated,
   Alert,
 } from 'react-native';
@@ -51,20 +53,28 @@ interface ConfiguracaoTipoMemoria {
 
 const CONFIGURACAO_TIPO: Record<MemoriaIA['tipo'], ConfiguracaoTipoMemoria> = {
   PREFERENCIA: {
-    rotulo: '[PREFERÊNCIA]',
-    fundoBadge: ShelloTema.cores.marcaClaro,
-    textoBadge: ShelloTema.cores.marca,
+    rotulo: 'PREFERÊNCIA',
+    fundoBadge: '#D6E2D8',   // verde sálvia claro
+    textoBadge: '#5E836A',   // verde sálvia
   },
   FATO: {
-    rotulo: '[FATO]',
-    fundoBadge: '#E8F4FD',
-    textoBadge: '#1565C0',
+    rotulo: 'FATO',
+    fundoBadge: '#EADCD6',   // terracota
+    textoBadge: '#8B5E3C',   // marrom terracota
   },
   OBJETIVO: {
-    rotulo: '[OBJETIVO]',
-    fundoBadge: ShelloTema.cores.terracota,
-    textoBadge: '#8B5E3C',
+    rotulo: 'OBJETIVO',
+    fundoBadge: '#D1E8F0',   // azul suave
+    textoBadge: '#1565C0',   // azul
   },
+};
+
+// ─── Efeito descritivo por nível de formalidade ──────────────────────────────
+
+const DESCRICAO_FORMALIDADE: Record<NivelFormalidade, string> = {
+  baixa: '💬 Shello usa linguagem casual e descontraída',
+  media: '🤝 Shello usa linguagem equilibrada e amigável',
+  alta: '📋 Shello usa linguagem formal e profissional',
 };
 
 // ─── Componente interno: CardMemoria ─────────────────────────────────────────
@@ -76,11 +86,9 @@ interface CardMemoriaProps {
 }
 
 function CardMemoria({ memoria, aoRemover }: CardMemoriaProps) {
-  // Cada card controla sua própria opacidade animada
   const opacidade = useRef(new Animated.Value(1)).current;
   const config = CONFIGURACAO_TIPO[memoria.tipo];
 
-  // Anima a saída do card antes de chamar a remoção real
   const handleRemover = useCallback(() => {
     Animated.timing(opacidade, {
       toValue: 0,
@@ -177,7 +185,14 @@ export default function TelaPerfil() {
     nivelFormalidade,
     setNivelFormalidade,
     concluirOnboarding,
+    dadosOnboarding,
   } = useShello();
+
+  // Estado local para o campo de nome de referência editável
+  const [nomeReferencia, setNomeReferencia] = useState(
+    dadosOnboarding?.nome.split(' ')[0] ?? nomeUsuario.split(' ')[0] ?? ''
+  );
+  const [salvandoNome, setSalvandoNome] = useState(false);
 
   // Usa memórias reais se existirem, caso contrário exibe os mocks
   const listaMemorias = memorias.length > 0 ? memorias : MEMORIAS_MOCK;
@@ -185,7 +200,6 @@ export default function TelaPerfil() {
   // Handler de remoção: chama a função do contexto com o id da memória
   const handleRemoverMemoria = useCallback(
     async (id: string) => {
-      // Se for uma memória mockada, não tenta remover do serviço
       if (id.startsWith('mock-')) return;
       try {
         await removerMemoria(id);
@@ -195,6 +209,22 @@ export default function TelaPerfil() {
     },
     [removerMemoria]
   );
+
+  // Handler de salvar nome de referência (mock — atualiza preferências)
+  const handleSalvarNome = useCallback(async () => {
+    if (!nomeReferencia.trim()) return;
+    setSalvandoNome(true);
+    try {
+      // Mock: simula chamada à rota PUT /api/users/preferences
+      await new Promise<void>((resolve) => setTimeout(resolve, 500));
+      // Notificação visual de sucesso
+      Alert.alert('✅ Salvo', `O Shello vai te chamar de "${nomeReferencia.trim()}" agora.`);
+    } catch (erro) {
+      console.error('Erro ao salvar nome de referência:', erro);
+    } finally {
+      setSalvandoNome(false);
+    }
+  }, [nomeReferencia]);
 
   // Handler de saída: limpa os dados do contexto com valores vazios
   const handleSair = useCallback(() => {
@@ -220,6 +250,7 @@ export default function TelaPerfil() {
 
   // Obtém o primeiro nome do usuário para exibição
   const primeiroNome = nomeUsuario.split(' ')[0] || 'Usuário';
+  const emailMock = 'usuario@email.com';
 
   return (
     <SafeAreaView style={estilos.areaSegura}>
@@ -230,9 +261,14 @@ export default function TelaPerfil() {
       >
         {/* ── Cabeçalho ──────────────────────────────────────────────────── */}
         <View style={estilos.cabecalho}>
-          {/* Avatar circular com ícone de usuário */}
-          <View style={estilos.avatarCirculo}>
-            <Feather name="user" size={40} color={ShelloTema.cores.superficie} />
+          {/* Avatar circular com logo do Shello */}
+          <View style={estilos.avatarWrapper}>
+            <Image
+              source={require('../../assets/logoshello.jpeg')}
+              style={estilos.avatarImagem}
+              resizeMode="cover"
+              accessibilityLabel="Avatar do Shello"
+            />
           </View>
 
           {/* Nome do usuário em fonte serifada */}
@@ -240,6 +276,43 @@ export default function TelaPerfil() {
 
           {/* Subtítulo descritivo */}
           <Text style={estilos.subtitulo}>{'Meu Perfil & Contexto da IA'}</Text>
+        </View>
+
+        {/* ── Seção: Nome de Referência ───────────────────────────────────── */}
+        <View style={estilos.secao}>
+          <Text style={estilos.tituloSecao}>Como o Shello te chama</Text>
+          <Text style={estilos.descricaoSecao}>
+            Personalize o nome usado pelo Shello ao se dirigir a você
+          </Text>
+
+          <Text style={estilos.labelCampo}>Nome de referência</Text>
+          <View style={estilos.linhaInput}>
+            <TextInput
+              style={estilos.inputNome}
+              value={nomeReferencia}
+              onChangeText={setNomeReferencia}
+              placeholder="Como o Shello deve te chamar?"
+              placeholderTextColor={ShelloTema.cores.textoS}
+              maxLength={30}
+              returnKeyType="done"
+              onSubmitEditing={handleSalvarNome}
+              accessibilityLabel="Nome de referência"
+            />
+            <TouchableOpacity
+              style={[
+                estilos.botaoSalvarNome,
+                salvandoNome && estilos.botaoSalvarNomeDesabilitado,
+              ]}
+              onPress={handleSalvarNome}
+              disabled={salvandoNome}
+              accessibilityRole="button"
+              accessibilityLabel="Salvar nome de referência"
+            >
+              <Text style={estilos.textoBotaoSalvar}>
+                {salvandoNome ? 'Salvando…' : 'Salvar'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* ── Seção: Personalidade da IA ─────────────────────────────────── */}
@@ -280,6 +353,13 @@ export default function TelaPerfil() {
                 </TouchableOpacity>
               );
             })}
+          </View>
+
+          {/* Indicador visual do efeito da formalidade */}
+          <View style={estilos.indicadorFormalidade}>
+            <Text style={estilos.textoIndicadorFormalidade}>
+              {DESCRICAO_FORMALIDADE[nivelFormalidade]}
+            </Text>
           </View>
         </View>
 
@@ -326,7 +406,7 @@ export default function TelaPerfil() {
         <View style={estilos.secao}>
           <Text style={estilos.tituloSecao}>Conta</Text>
 
-          {/* Linha de informação do usuário */}
+          {/* Linha de nome */}
           <View style={estilos.linhaInfoConta}>
             <View style={estilos.iconeInfoConta}>
               <Feather name="user" size={18} color={ShelloTema.cores.marca} />
@@ -334,6 +414,34 @@ export default function TelaPerfil() {
             <View style={estilos.textoInfoConta}>
               <Text style={estilos.labelInfoConta}>Nome</Text>
               <Text style={estilos.valorInfoConta}>{primeiroNome}</Text>
+            </View>
+          </View>
+
+          {/* Separador */}
+          <View style={estilos.separador} />
+
+          {/* Linha de e-mail */}
+          <View style={estilos.linhaInfoConta}>
+            <View style={estilos.iconeInfoConta}>
+              <Feather name="mail" size={18} color={ShelloTema.cores.marca} />
+            </View>
+            <View style={estilos.textoInfoConta}>
+              <Text style={estilos.labelInfoConta}>E-mail</Text>
+              <Text style={estilos.valorInfoConta}>{emailMock}</Text>
+            </View>
+          </View>
+
+          {/* Separador */}
+          <View style={estilos.separador} />
+
+          {/* Linha de versão */}
+          <View style={estilos.linhaInfoConta}>
+            <View style={estilos.iconeInfoConta}>
+              <Feather name="info" size={18} color={ShelloTema.cores.marca} />
+            </View>
+            <View style={estilos.textoInfoConta}>
+              <Text style={estilos.labelInfoConta}>Versão</Text>
+              <Text style={estilos.valorInfoConta}>v1.0.0 — Beta</Text>
             </View>
           </View>
 
@@ -349,11 +457,11 @@ export default function TelaPerfil() {
           >
             <Feather
               name="log-out"
-              size={18}
+              size={20}
               color="#8B5E3C"
               style={estilos.iconeBotaoSair}
             />
-            <Text style={estilos.textoBotaoSair}>Sair</Text>
+            <Text style={estilos.textoBotaoSair}>Sair da conta</Text>
           </TouchableOpacity>
         </View>
 
@@ -386,15 +494,22 @@ const estilos = StyleSheet.create({
     paddingVertical: ShelloTema.espacamento.xl,
     marginBottom: ShelloTema.espacamento.md,
   },
-  avatarCirculo: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: ShelloTema.cores.marca,
+  // Anel verde ao redor do avatar
+  avatarWrapper: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 3,
+    borderColor: ShelloTema.cores.marca,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: ShelloTema.espacamento.md,
     ...ShelloTema.sombra.media,
+  },
+  avatarImagem: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
   },
   nomeUsuario: {
     fontFamily: 'serif',
@@ -431,11 +546,50 @@ const estilos = StyleSheet.create({
     lineHeight: 18,
   },
 
+  // ── Nome de referência editável ────────────────────────────────────────────
+  labelCampo: {
+    fontSize: 12,
+    color: ShelloTema.cores.textoS,
+    marginBottom: ShelloTema.espacamento.xs,
+    fontWeight: '500',
+  },
+  linhaInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: ShelloTema.espacamento.sm,
+  },
+  inputNome: {
+    flex: 1,
+    backgroundColor: ShelloTema.cores.fundo,
+    borderRadius: ShelloTema.forma.bordaPill,
+    paddingHorizontal: ShelloTema.espacamento.md,
+    paddingVertical: ShelloTema.espacamento.sm,
+    fontSize: 15,
+    color: ShelloTema.cores.textoP,
+    borderWidth: 1,
+    borderColor: ShelloTema.cores.marcaClaro,
+  },
+  botaoSalvarNome: {
+    backgroundColor: ShelloTema.cores.marca,
+    borderRadius: ShelloTema.forma.bordaPill,
+    paddingVertical: ShelloTema.espacamento.sm,
+    paddingHorizontal: ShelloTema.espacamento.md,
+  },
+  botaoSalvarNomeDesabilitado: {
+    opacity: 0.6,
+  },
+  textoBotaoSalvar: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: ShelloTema.cores.superficie,
+  },
+
   // ── Seletor de formalidade ──────────────────────────────────────────────────
   seletorFormalidade: {
     flexDirection: 'row',
     gap: ShelloTema.espacamento.sm,
     justifyContent: 'space-between',
+    marginBottom: ShelloTema.espacamento.md,
   },
   botaoFormalidade: {
     flex: 1,
@@ -461,6 +615,19 @@ const estilos = StyleSheet.create({
   },
   textoBotaoInativo: {
     color: ShelloTema.cores.textoS,
+  },
+  // Indicador descritivo do efeito da formalidade
+  indicadorFormalidade: {
+    backgroundColor: ShelloTema.cores.fundo,
+    borderRadius: ShelloTema.forma.bordaPequena,
+    paddingVertical: ShelloTema.espacamento.sm,
+    paddingHorizontal: ShelloTema.espacamento.md,
+  },
+  textoIndicadorFormalidade: {
+    fontSize: 13,
+    color: ShelloTema.cores.textoS,
+    textAlign: 'center',
+    lineHeight: 18,
   },
 
   // ── Painel de memórias ─────────────────────────────────────────────────────
@@ -506,7 +673,7 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: ShelloTema.espacamento.md,
-    marginTop: ShelloTema.espacamento.sm,
+    marginTop: ShelloTema.espacamento.xs,
   },
   iconeInfoConta: {
     width: 40,
@@ -526,14 +693,14 @@ const estilos = StyleSheet.create({
     marginBottom: 2,
   },
   valorInfoConta: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: ShelloTema.cores.textoP,
   },
   separador: {
     height: 1,
     backgroundColor: ShelloTema.cores.fundo,
-    marginBottom: ShelloTema.espacamento.md,
+    marginBottom: ShelloTema.espacamento.xs,
   },
   botaoSair: {
     flexDirection: 'row',
@@ -543,6 +710,7 @@ const estilos = StyleSheet.create({
     borderRadius: 50,
     paddingVertical: ShelloTema.espacamento.md,
     paddingHorizontal: ShelloTema.espacamento.xl,
+    marginTop: ShelloTema.espacamento.sm,
     ...ShelloTema.sombra.suave,
   },
   iconeBotaoSair: {
