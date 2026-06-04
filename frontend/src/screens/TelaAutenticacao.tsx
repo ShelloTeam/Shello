@@ -14,11 +14,15 @@ import {
   Animated,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { ShelloTema } from '../styles/tema';
 import { useShello } from '../contexts/ShelloContext';
+
+// Logo do mascote Shello
+const LOGO_SHELLO = require('../../assets/logoshello.jpeg');
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -122,10 +126,13 @@ export default function TelaAutenticacao() {
 
   const renderLogo = () => (
     <View style={estilos.logoContainer}>
-      {/* Fallback com ícone Feather — logo ainda não presente nos assets do frontend */}
-      <View style={estilos.logoCirculo}>
-        <Feather name="home" size={80} color={ShelloTema.cores.superficie} />
-      </View>
+      {/* Logo oficial do mascote Shello */}
+      <Image
+        source={LOGO_SHELLO}
+        style={estilos.logoImagem}
+        resizeMode="cover"
+        accessibilityLabel="Logo do Shello"
+      />
     </View>
   );
 
@@ -422,18 +429,19 @@ const estilos = StyleSheet.create({
   },
   logoContainer: {
     marginBottom: ShelloTema.espacamento.md,
-  },
-  logoCirculo: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: ShelloTema.cores.marca,
     alignItems: 'center',
-    justifyContent: 'center',
-    // Sombra suave da logo
+  },
+  logoImagem: {
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    // Borda suave ao redor da logo circular
+    borderWidth: 3,
+    borderColor: ShelloTema.cores.marcaClaro,
+    // Sombra suave
     shadowColor: ShelloTema.cores.marca,
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.20,
     shadowRadius: 16,
     elevation: 8,
   },
