@@ -1,6 +1,26 @@
-__pycache__/
+# ─── Env / Secrets ────────────────────────────────────────────────────────────
 .env
-venv/
+.env.local
+.env.*.local
+!.env.example
+
+# ─── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
 *.pyc
-.pytest_cache/
+*.pyo
+*.pyd
 *.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# ─── Test / Coverage ──────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+nosetests.xml
+pytest-report.xml
