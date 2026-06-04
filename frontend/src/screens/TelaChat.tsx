@@ -198,8 +198,8 @@ export default function TelaChat(): React.JSX.Element {
 
   const flatListRef = useRef<FlatList<MensagemChat>>(null);
 
-  // Contagem de mensagens do usuário (apenas dele, para o limite)
-  const totalMensagens = mensagens.length;
+  // Contagem apenas das mensagens do usuário (regra 4.1: limite por msg do usuário)
+  const totalMensagens = mensagens.filter((m) => m.remetente === 'usuario').length;
   const atingiuLimite = totalMensagens >= LIMITE_MENSAGENS;
 
   // ── Mensagem de boas-vindas ──────────────────────────────────────────────
@@ -332,6 +332,8 @@ export default function TelaChat(): React.JSX.Element {
     try {
       await adicionarTarefa(tarefaSugerida);
       setConfirmacaoTarefa(tarefaSugerida);
+      // Auto-reset do feedback após 4 s para não ficar visível permanentemente
+      setTimeout(() => setConfirmacaoTarefa(null), 4000);
     } catch (e) {
       console.error('Erro ao adicionar tarefa:', e);
     } finally {

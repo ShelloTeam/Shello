@@ -88,8 +88,13 @@ interface CardMemoriaProps {
 function CardMemoria({ memoria, aoRemover }: CardMemoriaProps) {
   const opacidade = useRef(new Animated.Value(1)).current;
   const config = CONFIGURACAO_TIPO[memoria.tipo];
+  // Memórias mockadas não podem ser removidas — guard no filho evita
+  // que a animação de fade-out rode antes do pai bloquear a ação.
+  const ehMock = memoria.id.startsWith('mock-');
 
   const handleRemover = useCallback(() => {
+    // Guard: nunca animar nem chamar o pai para itens de demonstração
+    if (ehMock) return;
     Animated.timing(opacidade, {
       toValue: 0,
       duration: 300,
@@ -97,7 +102,7 @@ function CardMemoria({ memoria, aoRemover }: CardMemoriaProps) {
     }).start(() => {
       aoRemover(memoria.id);
     });
-  }, [opacidade, aoRemover, memoria.id]);
+  }, [ehMock, opacidade, aoRemover, memoria.id]);
 
   return (
     <Animated.View style={[estilosCard.container, { opacity: opacidade }]}>
@@ -117,8 +122,10 @@ function CardMemoria({ memoria, aoRemover }: CardMemoriaProps) {
         <TouchableOpacity
           onPress={handleRemover}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          accessibilityLabel="Remover memória"
+          accessibilityLabel={ehMock ? 'Memória de demonstração — não removível' : 'Remover memória'}
           accessibilityRole="button"
+          disabled={ehMock}
+          style={ehMock ? { opacity: 0.35 } : undefined}
         >
           <Feather name="trash-2" size={18} color={ShelloTema.cores.textoS} />
         </TouchableOpacity>
