@@ -1,7 +1,52 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from app.core.config import settings
+from app.core.rls_validator import RLSValidator
+from app.controllers.diary_controller import router as diary_router
+from app.controllers.chat_controller import router as chat_router
+from app.controllers.history_controller import router as history_router
+from app.controllers.tasks_controller import router as tasks_router
+from app.controllers.user_controller import router as user_router
 
-app = FastAPI(title="Shello API", version="0.1.0")
+tags_metadata = [
+    {"name": "Health",        "description": "Verificação de saúde da API"},
+    {"name": "Auth",          "description": "Autenticação e onboarding"},
+    {"name": "Diário",        "description": "CRUD de anotações pessoais"},
+    {"name": "Tarefas",       "description": "Gestão de tarefas (ToDo)"},
+    {"name": "Chat",          "description": "Conversas com o agente Shello"},
+    {"name": "Contexto",      "description": "Fragmentos de contexto do agente"},
+    {"name": "Configurações", "description": "Preferências de conta e do agente"},
+    {"name": "Histórico",     "description": "Histórico unificado de conversas e anotações"},
+    {"name": "Admin",         "description": "Endpoints administrativos (requerem ADMIN_KEY)"},
+]
+
+app = FastAPI(
+    title="Shello API",
+    description="""
+## API do Shello — Assistente Pessoal Inteligente
+
+### Autenticação
+Todos os endpoints (exceto `/health` e `/auth/*`) requerem JWT no header:
+```
+Authorization: Bearer <token>
+```
+
+### Códigos de status padrão
+| Código | Significado |
+|--------|-------------|
+| 200 | Sucesso |
+| 201 | Recurso criado |
+| 400 | Erro de negócio |
+| 401 | Não autenticado |
+| 403 | Sem permissão |
+| 422 | Dados inválidos |
+| 503 | Serviço externo indisponível |
+""",
+    version="1.0.0",
+    openapi_tags=tags_metadata,
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -12,6 +57,31 @@ app.add_middleware(
 )
 
 
-@app.get("/health")
+app.include_router(diary_router)
+app.include_router(chat_router)
+app.include_router(history_router)
+app.include_router(tasks_router)
+app.include_router(user_router)
+
+
+@app.get("/health", tags=["Health"], summary="Verificação de saúde")
 async def health():
     return {"status": "ok"}
+
+
+@app.get(
+    "/admin/rls-check",
+    tags=["Admin"],
+    summary="Validar RLS de todas as tabelas",
+    description="Verifica se Row Level Security está ativo nas 7 tabelas. Requer ADMIN_KEY no header.",
+    responses={
+        403: {"description": "ADMIN_KEY ausente ou inválida"},
+    },
+)
+async def rls_check(x_admin_key: str | None = Header(default=None)):
+    if not x_admin_key or x_admin_key != settings.admin_key:
+        raise HTTPException(status_code=403, detail="ADMIN_KEY inválida")
+    from supabase import create_client
+    db = create_client(settings.supabase_url, settings.supabase_key)
+    validator = RLSValidator(db=db)
+    return await validator.validate_all()
