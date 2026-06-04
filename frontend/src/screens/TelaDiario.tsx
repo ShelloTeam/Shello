@@ -1,83 +1,96 @@
-// TelaDiario.tsx — Tela do Diário do Shello
-// Permite escrever reflexões, visualizar entradas anteriores e salvar memórias da IA
+// TelaDiario.tsx — Lista de entradas do Diário (v3)
+// Exibe todas as entradas agrupadas por data + botão "Nova Entrada"
+// Regra 4.3: entradas >100 chars exibem indicador pulsante "Shello está lendo..." por ~5s
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, {
+  useState,
+  useRef,
+  useCallback,
+  useEffect,
+} from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   FlatList,
-  Modal,
   Animated,
-  KeyboardAvoidingView,
-  ActivityIndicator,
-  Platform,
-  Dimensions,
   ListRenderItemInfo,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ShelloTema } from '../styles/tema';
 import { useShello } from '../contexts/ShelloContext';
-import { NotaDiario } from '../types';
+import { EntradaDiario } from '../types';
+import { DiarioStackParamList } from '../navigation/NavegacaoDiario';
 
-// ─── Tipos locais ─────────────────────────────────────────────────────────────
+// ─── Constantes ────────────────────────────────────────────────────────────────
 
-// Grupo de notas por período (Hoje, Ontem, Esta semana)
-interface GrupoNotas {
+const DURACAO_IA_LENDO_MS = 5000;
+
+// ─── Tipos locais ──────────────────────────────────────────────────────────────
+
+type Props = NativeStackScreenProps<DiarioStackParamList, 'ListaEntradas'>;
+
+interface GrupoEntradas {
   titulo: string;
-  dados: NotaDiario[];
+  dados: EntradaDiario[];
 }
 
-// Item da lista: pode ser um cabeçalho de seção ou uma nota
 type ItemLista =
   | { tipo: 'cabecalho'; titulo: string }
-  | { tipo: 'nota'; nota: NotaDiario };
+  | { tipo: 'entrada'; entrada: EntradaDiario; iaLendo: boolean };
 
-// ─── Utilitários de agrupamento ──────────────────────────────────────────────
+// ─── Utilitários ───────────────────────────────────────────────────────────────
 
-// Retorna o início do dia (00:00:00.000)
 function inicioDoDia(data: Date): Date {
   const d = new Date(data);
   d.setHours(0, 0, 0, 0);
   return d;
 }
 
-// Agrupa as notas em: Hoje, Ontem, Esta semana e retorna lista plana com cabeçalhos
-function agruparNotas(notas: NotaDiario[]): ItemLista[] {
+function agruparEntradas(
+  entradas: EntradaDiario[],
+  idIaLendo: string | null
+): ItemLista[] {
   const agora = new Date();
   const hoje = inicioDoDia(agora);
   const ontem = new Date(hoje);
   ontem.setDate(ontem.getDate() - 1);
-  const semanaPassada = new Date(hoje);
-  semanaPassada.setDate(semanaPassada.getDate() - 7);
+  const semanaAtras = new Date(hoje);
+  semanaAtras.setDate(semanaAtras.getDate() - 7);
 
-  const grupos: GrupoNotas[] = [
+  const grupos: GrupoEntradas[] = [
     { titulo: 'Hoje', dados: [] },
     { titulo: 'Ontem', dados: [] },
-    { titulo: 'Esta semana', dados: [] },
+    { titulo: 'Semana Passada', dados: [] },
+    { titulo: 'Mais Antigas', dados: [] },
   ];
 
-  notas.forEach((nota) => {
-    const dataNota = inicioDoDia(new Date(nota.dataCriacao));
-    if (dataNota.getTime() === hoje.getTime()) {
-      grupos[0].dados.push(nota);
-    } else if (dataNota.getTime() === ontem.getTime()) {
-      grupos[1].dados.push(nota);
-    } else if (dataNota >= semanaPassada) {
-      grupos[2].dados.push(nota);
+  entradas.forEach((entrada) => {
+    const dataEntrada = inicioDoDia(new Date(entrada.dataCriacao));
+    if (dataEntrada.getTime() === hoje.getTime()) {
+      grupos[0].dados.push(entrada);
+    } else if (dataEntrada.getTime() === ontem.getTime()) {
+      grupos[1].dados.push(entrada);
+    } else if (dataEntrada >= semanaAtras) {
+      grupos[2].dados.push(entrada);
+    } else {
+      grupos[3].dados.push(entrada);
     }
   });
 
-  // Monta a lista plana com cabeçalhos e notas intercaladas
   const lista: ItemLista[] = [];
   grupos.forEach((grupo) => {
     if (grupo.dados.length > 0) {
       lista.push({ tipo: 'cabecalho', titulo: grupo.titulo });
-      grupo.dados.forEach((nota) =>
-        lista.push({ tipo: 'nota', nota })
+      grupo.dados.forEach((entrada) =>
+        lista.push({
+          tipo: 'entrada',
+          entrada,
+          iaLendo: entrada.id === idIaLendo,
+        })
       );
     }
   });
@@ -85,8 +98,7 @@ function agruparNotas(notas: NotaDiario[]): ItemLista[] {
   return lista;
 }
 
-// Formata data/hora em português para exibir no card da nota
-function formatarDataNota(isoString: string): string {
+function formatarDataEntrada(isoString: string): string {
   const data = new Date(isoString);
   return new Intl.DateTimeFormat('pt-BR', {
     day: '2-digit',
@@ -96,267 +108,268 @@ function formatarDataNota(isoString: string): string {
   }).format(data);
 }
 
-// ─── Componente de Card de Nota ───────────────────────────────────────────────
+// ─── Componente: Indicador de Pulse da IA ─────────────────────────────────────
 
-interface CardNotaProps {
-  nota: NotaDiario;
+function PulseIALendo() {
+  const opacidade = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacidade, {
+          toValue: 0.3,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacidade, {
+          toValue: 1,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [opacidade]);
+
+  return (
+    <Animated.View style={[estilos.iaLendoContainer, { opacity: opacidade }]}>
+      <Feather
+        name="cpu"
+        size={11}
+        color={ShelloTema.cores.marca}
+        style={estilos.iaLendoIcone}
+      />
+      <Text style={estilos.iaLendoTexto}>Shello está lendo...</Text>
+    </Animated.View>
+  );
 }
 
-function CardNota({ nota }: CardNotaProps) {
+// ─── Componente: Card de Entrada ──────────────────────────────────────────────
+
+interface CardEntradaProps {
+  entrada: EntradaDiario;
+  iaLendo: boolean;
+  onPress: () => void;
+}
+
+function CardEntrada({ entrada, iaLendo, onPress }: CardEntradaProps) {
+  const preview = entrada.conteudo.slice(0, 80) +
+    (entrada.conteudo.length > 80 ? '...' : '');
+
   return (
-    <View style={estilos.cardNota}>
-      <Text style={estilos.cardNotaTexto} numberOfLines={3}>
-        {nota.conteudo}
+    <TouchableOpacity
+      style={estilos.cardEntrada}
+      onPress={onPress}
+      activeOpacity={0.78}
+    >
+      {/* Título da entrada */}
+      <Text style={estilos.cardEntradaTitulo} numberOfLines={1}>
+        {entrada.titulo}
       </Text>
-      <Text style={estilos.cardNotaData}>{formatarDataNota(nota.dataCriacao)}</Text>
+
+      {/* Preview do conteúdo */}
+      <Text style={estilos.cardEntradaTexto} numberOfLines={2}>
+        {preview}
+      </Text>
+
+      {/* Rodapé: data + badge de contexto */}
+      <View style={estilos.cardEntradaRodape}>
+        <Text style={estilos.cardEntradaData}>
+          {formatarDataEntrada(entrada.dataCriacao)}
+        </Text>
+        {entrada.adicionadaAoContexto && (
+          <View style={estilos.badgeContexto}>
+            <Feather
+              name="check-circle"
+              size={10}
+              color={ShelloTema.cores.marca}
+            />
+            <Text style={estilos.badgeContextoTexto}>No contexto do Shello</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Indicador de IA lendo */}
+      {iaLendo && <PulseIALendo />}
+    </TouchableOpacity>
+  );
+}
+
+// ─── Componente: Estado Vazio ──────────────────────────────────────────────────
+
+interface EstadoVazioProps {
+  onNova: () => void;
+}
+
+function EstadoVazio({ onNova }: EstadoVazioProps) {
+  return (
+    <View style={estilos.vazioContainer}>
+      <View style={estilos.vazioIconeCirculo}>
+        <Feather name="book" size={36} color={ShelloTema.cores.marca} />
+      </View>
+      <Text style={estilos.vazioTitulo}>Seu diário está em branco</Text>
+      <Text style={estilos.vazioSubtitulo}>
+        Registre seus pensamentos, sentimentos e reflexões. Cada entrada é
+        um passo na sua jornada.
+      </Text>
+      <TouchableOpacity
+        style={estilos.vazioButtonCTA}
+        onPress={onNova}
+        activeOpacity={0.82}
+      >
+        <Feather name="edit-3" size={16} color="#FFFFFF" style={estilos.vazioButtonIcone} />
+        <Text style={estilos.vazioButtonTexto}>Escrever primeira entrada</Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
-export default function TelaDiario() {
-  const { notas, adicionarNota, adicionarMemoria } = useShello();
+export default function TelaDiario({ navigation }: Props) {
+  const { entradas } = useShello();
 
-  // Estado do editor
-  const [textoReflexao, setTextoReflexao] = useState('');
-  const [salvando, setSalvando] = useState(false);
+  // ID da entrada que está com "IA lendo" (gerenciado via param de retorno)
+  const [idIaLendo, setIdIaLendo] = useState<string | null>(null);
+  const timerIaLendo = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Estado do modal de insights
-  const [modalVisivel, setModalVisivel] = useState(false);
+  // Limpa o timer ao desmontar
+  useEffect(() => {
+    return () => {
+      if (timerIaLendo.current) clearTimeout(timerIaLendo.current);
+    };
+  }, []);
 
-  // Animação de slide do modal vinda de baixo para cima
-  const transicaoModal = useRef(new Animated.Value(0)).current;
+  // Quando voltar de TelaEntradaDiario, verifica se deve exibir "IA lendo"
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      // A tela recebe o último ID salvo via route params se necessário
+      // A lógica de idIaLendo pode ser controlada por quem volta
+    });
+    return unsubscribe;
+  }, [navigation]);
 
-  // ─── Handlers ────────────────────────────────────────────────────────────
+  // Dispara indicador de IA lendo para a entrada mais recente se >100 chars
+  const dispararIaLendo = useCallback((entradaId: string) => {
+    setIdIaLendo(entradaId);
+    if (timerIaLendo.current) clearTimeout(timerIaLendo.current);
+    timerIaLendo.current = setTimeout(() => {
+      setIdIaLendo(null);
+    }, DURACAO_IA_LENDO_MS);
+  }, []);
 
-  // Abre o modal com animação
-  const abrirModal = useCallback(() => {
-    setModalVisivel(true);
-    Animated.spring(transicaoModal, {
-      toValue: 1,
-      useNativeDriver: true,
-      tension: 65,
-      friction: 11,
-    }).start();
-  }, [transicaoModal]);
+  // Navegar para nova entrada
+  const handleNovaEntrada = useCallback(() => {
+    navigation.navigate('EntradaDiario', { nova: true });
+  }, [navigation]);
 
-  // Fecha o modal com animação de saída
-  const fecharModal = useCallback(() => {
-    Animated.timing(transicaoModal, {
-      toValue: 0,
-      duration: 220,
-      useNativeDriver: true,
-    }).start(() => setModalVisivel(false));
-  }, [transicaoModal]);
-
-  // Salva reflexão: mostra indicador, chama serviço e abre modal de insight
-  async function handleSalvarReflexao() {
-    if (!textoReflexao.trim() || salvando) return;
-
-    setSalvando(true);
-
-    // Simula processamento de 1.5s (como especificado)
-    await new Promise<void>((resolve) => setTimeout(resolve, 1500));
-
-    try {
-      await adicionarNota(textoReflexao.trim());
-      setTextoReflexao('');
-      abrirModal();
-    } finally {
-      setSalvando(false);
-    }
-  }
-
-  // Salva a memória mockada e fecha o modal
-  async function handleGuardarMemoria() {
-    await adicionarMemoria(
-      '✨ Você valoriza momentos de tranquilidade e reflexão',
-      'PREFERENCIA'
-    );
-    fecharModal();
-  }
-
-  // ─── Renderização da lista plana ─────────────────────────────────────────
-
-  const itensLista: ItemLista[] = agruparNotas(notas);
-
-  // Cabeçalho da FlatList — contém o editor + botão de salvar
-  const renderCabecalhoLista = useCallback(
-    () => (
-      <View>
-        {/* ── Título da tela ── */}
-        <View style={estilos.cabecalhoTela}>
-          <Text style={estilos.tituloDiario}>Meu Diário</Text>
-          <Feather name="edit-3" size={24} color={ShelloTema.cores.textoP} />
-        </View>
-
-        {/* ── Área de escrita ── */}
-        <View style={estilos.areaEscrita}>
-          <TextInput
-            style={estilos.inputReflexao}
-            value={textoReflexao}
-            onChangeText={setTextoReflexao}
-            placeholder="Como foi o seu dia? O que você está sentindo?"
-            placeholderTextColor={ShelloTema.cores.textoS}
-            multiline
-            textAlignVertical="top"
-          />
-          {/* Borda inferior decorativa */}
-          <View style={estilos.bordaInferiorInput} />
-        </View>
-
-        {/* ── Botão salvar reflexão ── */}
-        <TouchableOpacity
-          style={[estilos.botaoSalvar, salvando && estilos.botaoSalvarDesabilitado]}
-          onPress={handleSalvarReflexao}
-          disabled={salvando}
-          activeOpacity={0.82}
-        >
-          {salvando ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Text style={estilos.textoBotaoSalvar}>Salvar reflexão</Text>
-          )}
-        </TouchableOpacity>
-
-        {/* ── Separador de seção ── */}
-        {itensLista.length > 0 && (
-          <Text style={estilos.tituloSecaoEntradas}>Entradas anteriores</Text>
-        )}
-      </View>
-    ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [textoReflexao, salvando, itensLista.length]
+  // Navegar para editar entrada existente
+  const handleAbrirEntrada = useCallback(
+    (entrada: EntradaDiario) => {
+      navigation.navigate('EntradaDiario', { entrada });
+    },
+    [navigation]
   );
 
-  // Renderiza cada item da lista plana (cabeçalho de grupo ou card de nota)
+  // Escuta quando uma nova entrada foi criada (via route params)
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      const params = navigation.getState().routes.find(
+        (r) => r.name === 'ListaEntradas'
+      )?.params as { novaEntradaId?: string } | undefined;
+
+      if (params?.novaEntradaId) {
+        const entrada = entradas.find((e) => e.id === params.novaEntradaId);
+        if (entrada && entrada.conteudo.length > 100) {
+          dispararIaLendo(entrada.id);
+        }
+      }
+    });
+    return unsubscribe;
+  }, [navigation, entradas, dispararIaLendo]);
+
+  // ─── Lista plana com cabeçalhos ────────────────────────────────────────────
+
+  const itensLista: ItemLista[] = agruparEntradas(entradas, idIaLendo);
+
   const renderItem = useCallback(
     ({ item }: ListRenderItemInfo<ItemLista>) => {
       if (item.tipo === 'cabecalho') {
-        return <Text style={estilos.cabecalhoGrupo}>{item.titulo}</Text>;
+        return (
+          <View style={estilos.cabecalhoGrupoContainer}>
+            <Text style={estilos.cabecalhoGrupo}>{item.titulo}</Text>
+          </View>
+        );
       }
-      return <CardNota nota={item.nota} />;
+      return (
+        <CardEntrada
+          entrada={item.entrada}
+          iaLendo={item.iaLendo}
+          onPress={() => handleAbrirEntrada(item.entrada)}
+        />
+      );
     },
-    []
+    [handleAbrirEntrada]
   );
 
   const keyExtractor = useCallback(
     (item: ItemLista, index: number) =>
-      item.tipo === 'cabecalho' ? `cabecalho-${item.titulo}` : item.nota.id || String(index),
+      item.tipo === 'cabecalho'
+        ? `cabecalho-${item.titulo}`
+        : item.entrada.id || String(index),
     []
   );
 
-  // ─── Interpolação da animação do modal ──────────────────────────────────
+  // ─── Cabeçalho da FlatList ─────────────────────────────────────────────────
 
-  const { height: ALTURA_TELA } = Dimensions.get('window');
+  const renderCabecalho = useCallback(
+    () => (
+      <View style={estilos.cabecalhoTela}>
+        {/* Título */}
+        <View style={estilos.cabecalhoTitulos}>
+          <Text style={estilos.tituloDiario}>Meu Diário</Text>
+          <Text style={estilos.subtituloDiario}>Suas reflexões e memórias</Text>
+        </View>
 
-  const translateYModal = transicaoModal.interpolate({
-    inputRange: [0, 1],
-    outputRange: [ALTURA_TELA, 0],
-  });
+        {/* Ícone decorativo */}
+        <View style={estilos.cabecalhoIconeContainer}>
+          <Feather name="book-open" size={20} color={ShelloTema.cores.marca} />
+        </View>
+      </View>
+    ),
+    []
+  );
 
-  // ─── Render ───────────────────────────────────────────────────────────────
+  // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={estilos.areaSegura} edges={['top']}>
-      <KeyboardAvoidingView
-        style={estilos.keyboardAvoiding}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-      >
-        {/* Lista principal com cabeçalho embutido */}
-        <FlatList<ItemLista>
-          data={itensLista}
-          keyExtractor={keyExtractor}
-          renderItem={renderItem}
-          ListHeaderComponent={renderCabecalhoLista}
-          contentContainerStyle={estilos.conteudoLista}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          ListEmptyComponent={
-            <View style={estilos.listaVazia}>
-              <Feather
-                name="book-open"
-                size={36}
-                color={ShelloTema.cores.marcaClaro}
-              />
-              <Text style={estilos.textoListaVazia}>
-                Nenhuma entrada ainda.{'\n'}Escreva sua primeira reflexão!
-              </Text>
-            </View>
-          }
-        />
-      </KeyboardAvoidingView>
-
-      {/* ── Modal de Insights da IA ── */}
-      <Modal
-        transparent
-        visible={modalVisivel}
-        animationType="none"
-        onRequestClose={fecharModal}
-        statusBarTranslucent
-      >
-        {/* Fundo escuro semi-transparente */}
+      {/* Botão proeminente "Nova Entrada" fixo no topo */}
+      <View style={estilos.barraAcoesTopo}>
+        {renderCabecalho()}
         <TouchableOpacity
-          style={estilos.modalOverlay}
-          activeOpacity={1}
-          onPress={fecharModal}
+          style={estilos.botaoNovaEntrada}
+          onPress={handleNovaEntrada}
+          activeOpacity={0.82}
         >
-          {/* Card branco animado vindo de baixo */}
-          <Animated.View
-            style={[
-              estilos.modalCard,
-              { transform: [{ translateY: translateYModal }] },
-            ]}
-          >
-            {/* Impede que toques no card fechem o modal */}
-            <TouchableOpacity activeOpacity={1} onPress={() => {}}>
-              {/* Barra decorativa de arrasto */}
-              <View style={estilos.modalAlca} />
-
-              {/* Ícone e título do insight */}
-              <View style={estilos.modalCabecalho}>
-                <View style={estilos.modalCirculoIcone}>
-                  <Feather
-                    name="cpu"
-                    size={22}
-                    color={ShelloTema.cores.marca}
-                  />
-                </View>
-                <Text style={estilos.modalTituloIA}>
-                  Shello identificou algo sobre você:
-                </Text>
-              </View>
-
-              {/* Memória mockada */}
-              <View style={estilos.modalMemoriaContainer}>
-                <Text style={estilos.modalTextoMemoria}>
-                  ✨ Você valoriza momentos de tranquilidade e reflexão
-                </Text>
-              </View>
-
-              {/* Botão — Guardar memória */}
-              <TouchableOpacity
-                style={estilos.botaoGuardar}
-                onPress={handleGuardarMemoria}
-                activeOpacity={0.82}
-              >
-                <Text style={estilos.textoBotaoGuardar}>Guardar memória</Text>
-              </TouchableOpacity>
-
-              {/* Botão — Ignorar */}
-              <TouchableOpacity
-                style={estilos.botaoIgnorar}
-                onPress={fecharModal}
-                activeOpacity={0.7}
-              >
-                <Text style={estilos.textoBotaoIgnorar}>Ignorar</Text>
-              </TouchableOpacity>
-            </TouchableOpacity>
-          </Animated.View>
+          <Feather name="plus" size={18} color="#FFFFFF" style={estilos.botaoIcone} />
+          <Text style={estilos.botaoNovaEntradaTexto}>Nova Entrada</Text>
         </TouchableOpacity>
-      </Modal>
+      </View>
+
+      {/* Lista de entradas */}
+      <FlatList<ItemLista>
+        data={itensLista}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        contentContainerStyle={[
+          estilos.conteudoLista,
+          itensLista.length === 0 && estilos.conteudoListaVazia,
+        ]}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={<EstadoVazio onNova={handleNovaEntrada} />}
+      />
     </SafeAreaView>
   );
 }
@@ -364,217 +377,213 @@ export default function TelaDiario() {
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 
 const estilos = StyleSheet.create({
-  // Layout base
+  // ── Layout base ──
   areaSegura: {
     flex: 1,
-    backgroundColor: ShelloTema.cores.superficie,
+    backgroundColor: ShelloTema.cores.fundo,
   },
-  keyboardAvoiding: {
-    flex: 1,
-  },
-  conteudoLista: {
+
+  // ── Barra de ações do topo ──
+  barraAcoesTopo: {
     paddingHorizontal: ShelloTema.espacamento.lg,
-    paddingBottom: ShelloTema.espacamento.xl,
+    paddingTop: ShelloTema.espacamento.md,
+    paddingBottom: ShelloTema.espacamento.md,
+    backgroundColor: ShelloTema.cores.fundo,
   },
 
   // ── Cabeçalho da tela ──
   cabecalhoTela: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    paddingTop: ShelloTema.espacamento.md,
-    marginBottom: ShelloTema.espacamento.lg,
-  },
-  tituloDiario: {
-    fontSize: 28,
-    fontFamily: 'serif',
-    fontWeight: '700',
-    color: ShelloTema.cores.textoP,
-  },
-
-  // ── Área de escrita ──
-  areaEscrita: {
     marginBottom: ShelloTema.espacamento.md,
   },
-  inputReflexao: {
-    fontSize: 16,
+  cabecalhoTitulos: {
+    flex: 1,
+  },
+  tituloDiario: {
+    fontSize: ShelloTema.tipografia.tamanhos.grande,
+    fontFamily: ShelloTema.tipografia.titulo,
+    fontWeight: ShelloTema.tipografia.pesos.negrito,
     color: ShelloTema.cores.textoP,
-    lineHeight: 26,
-    minHeight: 200,
-    backgroundColor: 'transparent',
-    textAlignVertical: 'top',
-    paddingVertical: ShelloTema.espacamento.sm,
+    lineHeight: 34,
   },
-  bordaInferiorInput: {
-    height: 1.5,
+  subtituloDiario: {
+    fontSize: ShelloTema.tipografia.tamanhos.minusculo,
+    color: ShelloTema.cores.textoS,
+    marginTop: 2,
+  },
+  cabecalhoIconeContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: ShelloTema.cores.marcaClaro,
-    marginTop: ShelloTema.espacamento.xs,
-  },
-
-  // ── Botão salvar reflexão ──
-  botaoSalvar: {
-    backgroundColor: ShelloTema.cores.marca,
-    borderRadius: 50,
-    paddingVertical: ShelloTema.espacamento.md,
-    paddingHorizontal: ShelloTema.espacamento.xl,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: ShelloTema.espacamento.xl,
+  },
+
+  // ── Botão Nova Entrada ──
+  botaoNovaEntrada: {
+    backgroundColor: ShelloTema.cores.marca,
+    borderRadius: ShelloTema.forma.bordaMedia,
+    paddingVertical: ShelloTema.espacamento.md,
+    paddingHorizontal: ShelloTema.espacamento.xl,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     minHeight: 52,
-    ...ShelloTema.sombra.suave,
+    ...ShelloTema.sombra.media,
   },
-  botaoSalvarDesabilitado: {
-    opacity: 0.65,
+  botaoIcone: {
+    marginRight: ShelloTema.espacamento.sm,
   },
-  textoBotaoSalvar: {
+  botaoNovaEntradaTexto: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: ShelloTema.tipografia.tamanhos.normal,
+    fontWeight: ShelloTema.tipografia.pesos.negrito,
     letterSpacing: 0.3,
   },
 
-  // ── Seção de entradas ──
-  tituloSecaoEntradas: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: ShelloTema.cores.textoS,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    marginBottom: ShelloTema.espacamento.md,
+  // ── Lista ──
+  conteudoLista: {
+    paddingHorizontal: ShelloTema.espacamento.lg,
+    paddingBottom: ShelloTema.espacamento.xl,
+  },
+  conteudoListaVazia: {
+    flexGrow: 1,
   },
 
-  // ── Cabeçalho de grupo (Hoje, Ontem, Esta semana) ──
-  cabecalhoGrupo: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: ShelloTema.cores.marca,
+  // ── Cabeçalho de grupo ──
+  cabecalhoGrupoContainer: {
     marginTop: ShelloTema.espacamento.md,
     marginBottom: ShelloTema.espacamento.sm,
-    fontFamily: 'serif',
-  },
-
-  // ── Card de nota ──
-  cardNota: {
-    backgroundColor: ShelloTema.cores.superficie,
-    borderRadius: ShelloTema.forma.bordaPequena,
-    padding: ShelloTema.espacamento.md,
-    marginBottom: ShelloTema.espacamento.sm,
-    borderWidth: 1,
-    borderColor: ShelloTema.cores.marcaClaro,
-    ...ShelloTema.sombra.suave,
-  },
-  cardNotaTexto: {
-    fontSize: 14,
-    color: ShelloTema.cores.textoP,
-    lineHeight: 22,
-    marginBottom: ShelloTema.espacamento.sm,
-  },
-  cardNotaData: {
-    fontSize: 12,
-    color: ShelloTema.cores.textoS,
-  },
-
-  // ── Lista vazia ──
-  listaVazia: {
-    alignItems: 'center',
-    paddingVertical: ShelloTema.espacamento.xl,
-    gap: ShelloTema.espacamento.md,
-  },
-  textoListaVazia: {
-    fontSize: 14,
-    color: ShelloTema.cores.textoS,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-
-  // ── Modal overlay ──
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-
-  // ── Card do modal ──
-  modalCard: {
-    backgroundColor: ShelloTema.cores.superficie,
-    borderTopLeftRadius: ShelloTema.forma.bordaMedia,
-    borderTopRightRadius: ShelloTema.forma.bordaMedia,
-    paddingHorizontal: ShelloTema.espacamento.lg,
-    paddingBottom: Platform.OS === 'ios' ? 40 : ShelloTema.espacamento.xl,
-    paddingTop: ShelloTema.espacamento.md,
-  },
-
-  // Barra de arrasto decorativa
-  modalAlca: {
-    width: 40,
-    height: 4,
-    backgroundColor: ShelloTema.cores.marcaClaro,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: ShelloTema.espacamento.lg,
-  },
-
-  // Cabeçalho do modal
-  modalCabecalho: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: ShelloTema.espacamento.sm,
-    marginBottom: ShelloTema.espacamento.lg,
   },
-  modalCirculoIcone: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: ShelloTema.cores.marcaClaro,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalTituloIA: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: ShelloTema.cores.textoP,
-    flex: 1,
-    lineHeight: 20,
+  cabecalhoGrupo: {
+    fontSize: ShelloTema.tipografia.tamanhos.pequeno,
+    fontWeight: ShelloTema.tipografia.pesos.negrito,
+    color: ShelloTema.cores.marca,
+    fontFamily: ShelloTema.tipografia.titulo,
+    letterSpacing: 0.3,
   },
 
-  // Bloco da memória mockada
-  modalMemoriaContainer: {
-    backgroundColor: ShelloTema.cores.fundo,
+  // ── Card de entrada ──
+  cardEntrada: {
+    backgroundColor: ShelloTema.cores.superficie,
     borderRadius: ShelloTema.forma.bordaPequena,
     padding: ShelloTema.espacamento.md,
-    marginBottom: ShelloTema.espacamento.lg,
-    borderLeftWidth: 3,
-    borderLeftColor: ShelloTema.cores.marca,
+    marginBottom: ShelloTema.espacamento.sm,
+    ...ShelloTema.sombra.suave,
+    borderWidth: 1,
+    borderColor: ShelloTema.cores.marcaClaro + '60',
   },
-  modalTextoMemoria: {
-    fontSize: 15,
+  cardEntradaTitulo: {
+    fontSize: ShelloTema.tipografia.tamanhos.pequeno,
+    fontWeight: ShelloTema.tipografia.pesos.negrito,
     color: ShelloTema.cores.textoP,
-    lineHeight: 22,
+    fontFamily: ShelloTema.tipografia.titulo,
+    marginBottom: ShelloTema.espacamento.xs,
+  },
+  cardEntradaTexto: {
+    fontSize: ShelloTema.tipografia.tamanhos.pequeno,
+    color: ShelloTema.cores.textoS,
+    lineHeight: ShelloTema.tipografia.alturaLinha,
+    marginBottom: ShelloTema.espacamento.sm,
+  },
+  cardEntradaRodape: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  cardEntradaData: {
+    fontSize: ShelloTema.tipografia.tamanhos.minusculo,
+    color: ShelloTema.cores.textoS,
+  },
+  badgeContexto: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: ShelloTema.cores.marcaClaro,
+    borderRadius: ShelloTema.forma.bordaPill,
+    paddingHorizontal: ShelloTema.espacamento.sm,
+    paddingVertical: 2,
+    gap: 3,
+  },
+  badgeContextoTexto: {
+    fontSize: 10,
+    color: ShelloTema.cores.marca,
+    fontWeight: ShelloTema.tipografia.pesos.medio,
+  },
+
+  // ── Indicador de IA lendo ──
+  iaLendoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: ShelloTema.espacamento.sm,
+    paddingTop: ShelloTema.espacamento.sm,
+    borderTopWidth: 1,
+    borderTopColor: ShelloTema.cores.marcaClaro,
+    gap: 4,
+  },
+  iaLendoIcone: {
+    marginRight: 2,
+  },
+  iaLendoTexto: {
+    fontSize: 11,
+    color: ShelloTema.cores.marca,
+    fontWeight: ShelloTema.tipografia.pesos.medio,
     fontStyle: 'italic',
   },
 
-  // Botão — Guardar memória
-  botaoGuardar: {
-    backgroundColor: ShelloTema.cores.marca,
-    borderRadius: 50,
-    paddingVertical: ShelloTema.espacamento.md,
+  // ── Estado vazio ──
+  vazioContainer: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: ShelloTema.espacamento.xxl,
+    paddingHorizontal: ShelloTema.espacamento.xl,
+    gap: ShelloTema.espacamento.md,
+  },
+  vazioIconeCirculo: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: ShelloTema.cores.marcaClaro,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: ShelloTema.espacamento.sm,
+  },
+  vazioTitulo: {
+    fontSize: ShelloTema.tipografia.tamanhos.medio,
+    fontFamily: ShelloTema.tipografia.titulo,
+    fontWeight: ShelloTema.tipografia.pesos.negrito,
+    color: ShelloTema.cores.textoP,
+    textAlign: 'center',
+  },
+  vazioSubtitulo: {
+    fontSize: ShelloTema.tipografia.tamanhos.pequeno,
+    color: ShelloTema.cores.textoS,
+    textAlign: 'center',
+    lineHeight: ShelloTema.tipografia.alturaLinha + 4,
+    maxWidth: 280,
+  },
+  vazioButtonCTA: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: ShelloTema.cores.marca,
+    borderRadius: ShelloTema.forma.bordaPill,
+    paddingVertical: ShelloTema.espacamento.md,
+    paddingHorizontal: ShelloTema.espacamento.xl,
+    marginTop: ShelloTema.espacamento.sm,
     ...ShelloTema.sombra.suave,
   },
-  textoBotaoGuardar: {
+  vazioButtonIcone: {
+    marginRight: ShelloTema.espacamento.sm,
+  },
+  vazioButtonTexto: {
     color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-
-  // Botão — Ignorar
-  botaoIgnorar: {
-    paddingVertical: ShelloTema.espacamento.md,
-    alignItems: 'center',
-  },
-  textoBotaoIgnorar: {
-    fontSize: 15,
-    color: ShelloTema.cores.textoS,
+    fontSize: ShelloTema.tipografia.tamanhos.normal,
+    fontWeight: ShelloTema.tipografia.pesos.negrito,
   },
 });
