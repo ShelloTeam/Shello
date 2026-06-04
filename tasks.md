@@ -1,105 +1,140 @@
 # 📋 BACKLOG DE TAREFAS — FRONT-END SHELLO
 
-Este arquivo documenta as tarefas de implementação do front-end móvel do **Shello**.
-> **Regra para o Agente de IA:** Conclua uma sub-tarefa por vez, garanta que os testes passem, execute `npm run ts-check` e faça um commit pequeno correspondente antes de marcar `[x]`.
+> **Regra para o Agente de IA:** Conclua uma sub-tarefa por vez, garanta que os testes passem, execute `make check` e faça um commit pequeno correspondente antes de marcar `[x]`.
 
 ---
 
-## 🏗️ Fase 0: Setup da Suite de Testes (TDD) & AsyncStorage Mock
+## ✅ Fases Concluídas
 
-- [x] **Task 0.1: Instalação das Dependências de Teste e AsyncStorage**
-  - Instalado: `jest`, `@testing-library/react-native`, `@testing-library/jest-native`, `jest-expo`, `@types/jest`
-  - Instalado: `@react-native-async-storage/async-storage` (v3.x) no projeto `/frontend`
-  - Instalado: `@react-navigation/native-stack`
-- [x] **Task 0.2: Configuração do `jest.config.js` e Mocks**
-  - Criado `frontend/jest.config.js` com preset `jest-expo`
-  - Criado `frontend/jest.setup.ts` com mock manual do AsyncStorage (compatível com v3.x)
-  - Adicionados scripts `"test"`, `"test:watch"` e `"test:coverage"` no `package.json`
-- [x] **Task 0.3: Teste de Sanidade**
-  - Criado `src/__tests__/sanidade.test.ts` — 3 testes passando ✅
+### Fase 0 — Setup TDD & AsyncStorage
+- [x] Instalação de dependências de teste (jest, @testing-library, jest-expo)
+- [x] Configuração jest.config.js + mocks AsyncStorage
+- [x] Teste de sanidade (3 testes ✅)
 
----
+### Fase 1 — Design System, Context API & Serviços Mock
+- [x] `src/styles/tema.ts` — ShelloTema (Sage Theme)
+- [x] `src/types/index.ts` — todos os tipos do domínio
+- [x] `src/services/mockServicos.ts` — camada de serviços mockados
+- [x] `src/contexts/ShelloContext.tsx` — estado global com Context API
 
-## 🎨 Fase 1: Setup do Design System, Context API & Serviços de Mock
+### Fase 2 — Fluxo de Autenticação & Onboarding
+- [x] `TelaAutenticacao.tsx` — Login / Cadastro / Recuperação de senha
+- [x] `TelaOnboarding.tsx` — 3 etapas com animação de slide
 
-- [x] **Task 1.1: Criação do Arquivo de Tema**
-  - Criado `src/styles/tema.ts` com `ShelloTema` (Sage Theme: cores, tipografia, bordas, espaçamento, sombras)
-  - Criados tipos em `src/types/index.ts` (`NotaDiario`, `Tarefa`, `Rotina`, `MemoriaIA`, `DadosOnboarding`, `MensagemChat`, `NivelFormalidade`)
-  - Criado `src/__tests__/tema.test.ts` — 6 testes passando ✅
-- [x] **Task 1.2: Criação da Camada de Serviços Mockados**
-  - Criado `src/services/mockServicos.ts` com funções assíncronas usando `AsyncStorage` + `setTimeout`
-  - Funções: `salvarNota`, `buscarNotas`, `salvarTarefa`, `buscarTarefas`, `alternarTarefa`, `salvarDadosOnboarding`, `buscarDadosOnboarding`, `salvarMemoria`, `buscarMemorias`, `removerMemoria`
-  - Criado `src/__tests__/mockServicos.test.ts` — 13 testes passando ✅
-- [x] **Task 1.3: Criação do Contexto Global (`ShelloContext.tsx`)**
-  - Criado `src/contexts/ShelloContext.tsx` com React Context API
-  - Estado: `nomeUsuario`, `onboardingConcluido`, `carregando`, `nivelFormalidade`, `notas`, `tarefas`, `memorias`
-  - Ações: `adicionarNota`, `adicionarTarefa`, `alternarTarefa`, `concluirOnboarding`, `adicionarMemoria`, `removerMemoria`, `setNivelFormalidade`
+### Fase 3 — Navegação Principal
+- [x] `NavegacaoAbas.tsx` — BottomTabNavigator com 5 abas
+- [x] `NavegacaoDiario.tsx` — Stack Navigator aninhado (Lista → EntradaDiario)
+- [x] `navigation/index.tsx` — roteamento inteligente (carregando → pré-hub → hub)
 
----
+### Fase 4 — Remodelagem das Telas do Hub (Sessão 2)
+- [x] `HomeScreen.tsx` — saudação serifada, badges, 2 atalhos limpos, FAB com logo real
+- [x] `TelaDiario.tsx` — lista de entradas agrupadas por data, badge de contexto
+- [x] `TelaEntradaDiario.tsx` — **NOVO** bloco de notas com [Finalizar] + [+ Contexto Shello]
+- [x] `TelaChat.tsx` — limite 20 msgs, card de tarefa, sprite de expressões
+- [x] `TelaTarefas.tsx` — "Sua Jornada", modal de criação funcional, rotinas
+- [x] `TelaPerfil.tsx` — badges coloridas por tipo de memória, avatar real, nome editável
 
-## 🔒 Fase 2: Fluxo Pré-Hub (Autenticação e Onboarding)
-
-- [x] **Task 2.1: Tela de Autenticação (`TelaAutenticacao.tsx`)**
-  - Criado `src/screens/TelaAutenticacao.tsx` (578 linhas)
-  - 3 formulários com alternância animada: `'login' | 'cadastro' | 'recuperar'`
-  - Toggle de senha (eye/eye-off), botão com `ActivityIndicator` 800ms
-  - `KeyboardAvoidingView` + `ScrollView`
-- [x] **Task 2.2: Tela de Onboarding Sequencial (`TelaOnboarding.tsx`)**
-  - Criado `src/screens/TelaOnboarding.tsx` (580 linhas)
-  - 3 etapas com animação de slide horizontal + fade paralelos
-  - Indicador de progresso em bolinhas pill
-  - Salva via `concluirOnboarding()` do `ShelloContext`
+### Cobertura de Testes Atual
+| Suite | Testes | Status |
+|-------|--------|--------|
+| sanidade | 3 | ✅ |
+| tema | 9 | ✅ |
+| mockServicos | 15 | ✅ |
+| TelaEntradaDiario | 10 | ✅ |
+| TelaChat | 8 | ✅ |
+| **Total** | **45** | **✅ 0 erros TS** |
 
 ---
 
-## 🌿 Fase 3: Navegação Principal (`BottomTabNavigator`)
+## 🔴 BUGS CONHECIDOS (Alta Prioridade)
 
-- [x] **Task 3.1: Configuração do BottomTabNavigator**
-  - Criado `src/navigation/NavegacaoAbas.tsx` com 5 abas (Home, Diário, Chat, Tarefas, Perfil)
-  - Botão central do Chat estilizado: círculo 64px verde sálvia elevado
-  - Roteamento inteligente em `src/navigation/index.tsx`: carregando → pré-hub → hub
-  - `App.tsx` atualizado com `ShelloProvider` + `SafeAreaProvider`
+### BUG-01 — Ícone de Chat na HomeScreen
+- **Problema:** A HomeScreen ainda exibe o FAB (botão flutuante) que navega para o ChatTab. O usuário pediu explicitamente múltiplas vezes para **remover qualquer referência ao Chat da Home** pois o botão já existe no menu inferior.
+- **Arquivo:** `frontend/src/screens/HomeScreen.tsx` — linhas ~90 e ~190 (função `irParaChat` e o FAB)
+- **Correção:** Remover completamente `irParaChat`, o FAB e a `View` de posicionamento absoluto. O FAB pode ser substituído por um terceiro card de atalho (ex: "Refletir agora") ou simplesmente removido.
 
----
+### BUG-02 — Fluxo de Deslogar Quebrado
+- **Problema:** `handleSair` em `TelaPerfil.tsx` chama `concluirOnboarding({})` com dados vazios, o que seta `onboardingConcluido = true` mas o app não redireciona para a tela de login. O usuário "sai" mas continua logado.
+- **Arquivo:** `frontend/src/screens/TelaPerfil.tsx` + `frontend/src/contexts/ShelloContext.tsx`
+- **Correção:**
+  1. Adicionar ação `resetarConta()` no ShelloContext que limpa todo o estado e seta `onboardingConcluido = false`
+  2. Chamar `resetarConta()` no `handleSair` em vez de `concluirOnboarding`
+  3. A navegação em `navigation/index.tsx` já detecta `onboardingConcluido === false` e redireciona para o pré-hub
 
-## 🏠 Fase 4: Telas do Hub Principal
-
-- [x] **Task 4.1: Tela Home (`HomeScreen.tsx`)**
-  - Reescrita completamente (478 linhas)
-  - Data em PT-BR, saudação personalizada, badges pill, card de diário rápido
-  - FAB com animação Spring + bolinha de notificação, atalhos de navegação
-- [x] **Task 4.2: Tela do Diário (`TelaDiario.tsx`)**
-  - Criado (581 linhas)
-  - Editor de texto livre, FlatList agrupada por data, Modal de insights da IA com slide-up animado
-- [x] **Task 4.3: Tela do Agente Shello (`TelaChat.tsx`)**
-  - Criado (727 linhas)
-  - Balões de chat esquerda/direita, ShimmerLoader via `Animated.loop`, sugestões iniciais, card de criação de tarefa
-- [x] **Task 4.4: Tela de Tarefas e Rotinas (`TelaTarefas.tsx`)**
-  - Criado (651 linhas)
-  - Checkboxes circulares com animação de conclusão, tarefas atrasadas com borda vermelha, Modal de nova tarefa, rotinas diárias em cards
-- [x] **Task 4.5: Tela de Perfil e Painel de Contexto (`TelaPerfil.tsx`)**
-  - Criado (562 linhas)
-  - Seletor de formalidade, painel de memórias com cards por tipo, animação fade-out de exclusão
+### BUG-03 — Criação de Tarefas com Data Bugada
+- **Problema:** O campo de data na TelaTarefas aceita entrada em `dd/mm/aaaa` mas a conversão para ISO 8601 pode falhar em edge cases. Datas inválidas (ex: 31/02) não são rejeitadas corretamente. O campo também é confuso para o usuário (texto livre em vez de picker).
+- **Arquivo:** `frontend/src/screens/TelaTarefas.tsx` — modal de nova tarefa
+- **Correção:** Substituir o campo de texto de data por um DatePicker nativo via `@react-native-community/datetimepicker` ou simplificar para apenas mostrar um seletor de "hoje / amanhã / esta semana".
 
 ---
 
-## ✅ Resumo do Progresso
+## 🟡 MELHORIAS PENDENTES (Média Prioridade)
 
-| Fase | Status | Testes |
-|------|--------|--------|
-| Fase 0 — Setup TDD | ✅ Concluída | 3 testes ✅ |
-| Fase 1 — Design System & Context | ✅ Concluída | 19 testes ✅ |
-| Fase 2 — Auth & Onboarding | ✅ Concluída | — |
-| Fase 3 — Navegação | ✅ Concluída | — |
-| Fase 4 — Telas do Hub | ✅ Concluída | — |
+### MELHORIA-01 — Refinamento Visual da HomeScreen
+- A tela está funcional mas pode ter mais personalidade visual
+- Adicionar fundo com gradiente suave sálvia→creme no topo
+- Melhorar proporções dos cards de atalho (altura, ícone maior)
+- Badge "🔥 7 dias seguidos" é **dado falso** — calcular streak real a partir de `entradas.dataCriacao` ou esconder até haver lógica real
+- Considerar seção "Última reflexão" mostrando preview da última entrada do diário
 
-**Total: 22 testes passando, 0 erros TypeScript**
+### MELHORIA-02 — Mascote Shello & Animações
+- O sprite sheet `shello-expressoes.jpeg` com 4 expressões está em uso no Chat, mas as animações de transição entre expressões poderiam ser mais suaves (cross-fade entre quadros)
+- Criar um componente `<MascoteShello />` reutilizável que qualquer tela pode usar
+- Adicionar animação de "respiração" (scale pulsando suavemente) ao mascote quando está em idle
+- A imagem `WhatsApp Image 2026-04-06 at 19.20.11.jpeg` na raiz do projeto deve ser movida para `frontend/assets/` com nome adequado
+
+### MELHORIA-03 — Code Review Pendentes (baixo impacto)
+- HomeScreen: `dataFormatada`/`saudacao` sem `useMemo`
+- TelaDiario: `renderItem` cria closure a cada render (falta `React.memo` no `CardEntrada`)
+- TelaChat: `setTimeout` de 2800ms sem cleanup no unmount
+- TelaChat: cores `#4CAF50` e `#8B5E3C` hardcoded fora do ShelloTema
+- TelaPerfil: `nomeReferencia` pode ficar vazio se `dadosOnboarding` é `null` no mount
 
 ---
 
-## 🔜 Próximas Fases (Backend Integration)
+## 🔵 PRÓXIMAS FASES (Integração com Backend)
 
-- [ ] Substituir `mockServicos.ts` por chamadas reais à API REST
-- [ ] Implementar autenticação real com JWT
-- [ ] Conectar o Chat com a IA real
-- [ ] Adicionar push notifications
+> Executar **após** resolver os bugs acima. O backend usa FastAPI + PostgreSQL.
+> Documentação completa em `project_context.md`.
+
+### Fase 5 — Integração de Autenticação Real
+- [ ] Substituir mock de login por `POST /api/auth/login` (JWT)
+- [ ] Substituir mock de cadastro por `POST /api/auth/register`
+- [ ] Armazenar JWT no AsyncStorage
+- [ ] Interceptor de requisições com token no header `Authorization: Bearer <token>`
+- [ ] Refresh token automático quando expirar
+
+### Fase 6 — Integração do Diário
+- [ ] `GET /api/diary/entries` — carregar entradas do servidor
+- [ ] `POST /api/diary/entries` — salvar nova entrada
+- [ ] `PATCH /api/diary/entries/:id` — editar entrada existente
+- [ ] Manter cache local com AsyncStorage (offline-first)
+
+### Fase 7 — Integração do Chat com IA Real
+- [ ] `POST /api/chat/message` — enviar mensagem e receber resposta da IA
+- [ ] Streaming de resposta (WebSocket ou SSE) para UX mais fluida
+- [ ] Persistir histórico de conversa no backend
+- [ ] Expressões do mascote baseadas no `sentiment` retornado pela API
+
+### Fase 8 — Integração de Tarefas & Memórias
+- [ ] `GET/POST/PATCH /api/tasks` — CRUD de tarefas
+- [ ] `GET/POST/DELETE /api/memories` — CRUD de memórias da IA
+- [ ] `PUT /api/users/preferences` — formalidade e nome de referência
+
+### Fase 9 — Push Notifications & Polimento Final
+- [ ] Configurar Expo Notifications para lembretes de diário
+- [ ] Onboarding: adicionar tela de permissão de notificação
+- [ ] Testes de integração com backend real
+- [ ] Testes E2E com Detox ou Maestro
+
+---
+
+## 📌 Ordem Sugerida para Próxima Sessão
+
+1. **BUG-01** — Remover FAB/chat da HomeScreen ← usuário pediu múltiplas vezes
+2. **BUG-02** — Corrigir deslogar (`resetarConta` no contexto)
+3. **BUG-03** — Melhorar seletor de data nas Tarefas
+4. **MELHORIA-01** — Refinar visual da HomeScreen
+5. **MELHORIA-02** — Componente `<MascoteShello />` reutilizável
+6. Commit + `git push origin frontend`
+7. Iniciar Fase 5 (autenticação real)
