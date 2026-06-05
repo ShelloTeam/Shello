@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from functools import lru_cache
 
 
 class Settings(BaseSettings):
@@ -10,8 +11,21 @@ class Settings(BaseSettings):
     sentry_dsn: str = ""
     admin_key: str = ""
 
+    jwt_algorithm: str = "HS256"
+    jwt_expire_days: int = 7
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment.lower() == "production"
+
     class Config:
         env_file = ".env"
 
 
-settings = Settings()
+@lru_cache()
+def get_settings() -> Settings:
+    return Settings()
+
+
+# instância direta mantida para compatibilidade com core/security.py
+settings = get_settings()
