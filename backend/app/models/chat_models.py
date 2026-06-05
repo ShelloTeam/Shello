@@ -6,7 +6,7 @@ class Conversation(BaseModel):
     id: str
     user_id: str
     message_count: int = 0
-    is_active: bool = True
+    status: str = "active"
 
     model_config = {"from_attributes": True}
 

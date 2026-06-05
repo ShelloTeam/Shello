@@ -11,9 +11,9 @@ from app.controllers.chat_controller import router as chat_router
 from app.controllers.history_controller import router as history_router
 from app.controllers.tasks_controller import router as tasks_router
 from app.controllers.user_controller import router as user_router
-from app.controllers.auth_controller import router as auth_router
-from app.controllers.onboarding_controller import router as onboarding_router
-from app.controllers.context_fragments_controller import router as context_router
+from app.api.v1.auth import router as auth_router
+from app.api.v1.onboarding import router as onboarding_router
+from app.api.v1.context_fragments import router as context_router
 
 tags_metadata = [
     {"name": "Health",        "description": "Verificação de saúde da API"},
@@ -29,12 +29,15 @@ tags_metadata = [
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    db = create_client(settings.supabase_url, settings.supabase_key)
-    chat_repo = ChatRepository(db=db)
-    scheduler = ConversationScheduler(chat_repository=chat_repo)
-    scheduler.start()
+    scheduler = None
+    if settings.supabase_url and settings.supabase_key:
+        db = create_client(settings.supabase_url, settings.supabase_key)
+        chat_repo = ChatRepository(db=db)
+        scheduler = ConversationScheduler(chat_repository=chat_repo)
+        scheduler.start()
     yield
-    scheduler.stop()
+    if scheduler:
+        scheduler.stop()
 
 app = FastAPI(
     title="Shello API",

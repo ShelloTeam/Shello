@@ -1,16 +1,16 @@
 from __future__ import annotations
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from typing import Union
-from app.models.task_models import Task, TaskFromChatSingle, TaskFromChatBatch, TaskBatchResponse
+from app.models.task_models import TaskFromChatSingle, TaskFromChatBatch, TaskBatchResponse
 from app.services.task_service import TaskService
 from app.repositories.task_repository import TaskRepository
-from app.core.dependencies import get_current_user, get_supabase, User
+from app.core.dependencies import get_current_user, User
 
 router = APIRouter(prefix="/api/tasks", tags=["Tarefas"])
 
 
-def get_task_service(db=Depends(get_supabase)) -> TaskService:
-    return TaskService(repository=TaskRepository(db=db))
+def get_task_service() -> TaskService:
+    return TaskService(repo=TaskRepository())
 
 
 @router.post(
@@ -38,10 +38,10 @@ async def create_task_from_chat(
     service: TaskService = Depends(get_task_service),
 ):
     if isinstance(body, TaskFromChatBatch):
-        created = []
-        for item in body.tasks:
-            task = await service.create(user_id=current_user.id, title=item.title)
-            created.append(task)
+        created = [
+            await service.create(user_id=current_user.id, title=item.title)
+            for item in body.tasks
+        ]
         return TaskBatchResponse(created=created)
 
     return await service.create(user_id=current_user.id, title=body.title)

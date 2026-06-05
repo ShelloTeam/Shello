@@ -3,13 +3,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.models.user_models import UserPreferences, UserPreferencesUpdate, PasswordChange, PasswordChangeResponse
 from app.services.user_service import UserService
 from app.repositories.user_repository import UserRepository
-from app.core.dependencies import get_current_user, get_supabase, User
+from app.core.dependencies import get_current_user, User
 
 router = APIRouter(prefix="/api/users", tags=["Configurações"])
 
 
-def get_user_service(db=Depends(get_supabase)) -> UserService:
-    return UserService(repository=UserRepository(db=db))
+def get_user_service() -> UserService:
+    return UserService(repository=UserRepository())
 
 
 @router.put(

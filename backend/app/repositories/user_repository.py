@@ -31,7 +31,7 @@ class UserRepository:
         try:
             result = (
                 self._client.table("users")
-                .insert({"email": email, "password_hash": hashed_password, "nome_referencia": nome})
+                .insert({"email": email, "password_hash": hashed_password, "name": nome})
                 .execute()
             )
             if not result.data:
@@ -109,4 +109,58 @@ class UserRepository:
             ).eq("id", user_id).execute()
         except Exception:
             logger.error("Erro ao atualizar senha")
+            raise
+
+    async def verify_password(self, user_id: str, current_password: str) -> bool:
+        """Verifica se current_password bate com o hash armazenado."""
+        try:
+            result = (
+                self._client.table("users")
+                .select("password_hash")
+                .eq("id", user_id)
+                .limit(1)
+                .execute()
+            )
+            if not result.data:
+                return False
+            from app.core.security import verify_password as _vp
+            return _vp(current_password, result.data[0]["password_hash"])
+        except Exception:
+            logger.error("Erro ao verificar senha: user_id=%s", user_id)
+            raise
+
+    async def get_preferences(self, user_id: str):
+        """Retorna preferências do usuário."""
+        from app.models.user_models import UserPreferences
+        try:
+            result = (
+                self._client.table("users")
+                .select("formalidade,nome_referencia,theme")
+                .eq("id", user_id)
+                .limit(1)
+                .execute()
+            )
+            if not result.data:
+                return UserPreferences()
+            return UserPreferences(**result.data[0])
+        except Exception:
+            logger.error("Erro ao buscar preferências: user_id=%s", user_id)
+            raise
+
+    async def update_preferences(self, user_id: str, formalidade=None, nome_referencia=None, theme=None):
+        """Atualiza preferências do usuário e retorna o estado atualizado."""
+        from app.models.user_models import UserPreferences
+        fields = {}
+        if formalidade is not None:
+            fields["formalidade"] = formalidade
+        if nome_referencia is not None:
+            fields["nome_referencia"] = nome_referencia
+        if theme is not None:
+            fields["theme"] = theme
+        try:
+            if fields:
+                self._client.table("users").update(fields).eq("id", user_id).execute()
+            return await self.get_preferences(user_id)
+        except Exception:
+            logger.error("Erro ao atualizar preferências: user_id=%s", user_id)
             raise

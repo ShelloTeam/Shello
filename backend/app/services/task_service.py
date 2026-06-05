@@ -7,8 +7,8 @@ logger = logging.getLogger(__name__)
 
 
 class TaskService:
-    def __init__(self, repo: TaskRepository) -> None:
-        self._repo = repo
+    def __init__(self, repo: TaskRepository = None, repository: TaskRepository = None) -> None:
+        self._repo = repo or repository
 
     def _enrich_task(self, task: dict) -> dict:
         is_overdue = False
@@ -66,3 +66,15 @@ class TaskService:
         deleted = self._repo.delete(task_id, user_id)
         if not deleted:
             raise ValueError("Tarefa não encontrada.")
+
+    async def create(self, user_id: str, title: str):
+        """Cria tarefa via chat — due_date sempre null."""
+        from app.models.task_models import Task as TaskModel
+        raw = self._repo.create(user_id=user_id, title=title, description=None, due_date=None)
+        return TaskModel(
+            id=raw["id"],
+            user_id=raw["user_id"],
+            title=raw["title"],
+            status=raw.get("status", "pending"),
+            due_date=None,
+        )
