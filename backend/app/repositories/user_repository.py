@@ -45,11 +45,11 @@ class UserRepository:
     # ── NOVO ──────────────────────────────────────────────────────────────
 
     def get_by_email(self, email: str) -> dict | None:
-        """Retorna o usuário completo (incluindo password_hash) ou None."""
+        """Retorna o usuário completo (incluindo password_hash e name) ou None."""
         try:
             result = (
                 self._client.table("users")
-                .select("id, email, password_hash")
+                .select("id, email, name, password_hash")
                 .eq("email", email)
                 .limit(1)
                 .execute()
@@ -57,6 +57,21 @@ class UserRepository:
             return result.data[0] if result.data else None
         except Exception:
             logger.error("Erro ao buscar usuário por e-mail")
+            raise
+
+    def get_by_id(self, user_id: str) -> dict | None:
+        """Retorna dados básicos do usuário por ID (sem password_hash)."""
+        try:
+            result = (
+                self._client.table("users")
+                .select("id, email, name, nome_referencia")
+                .eq("id", user_id)
+                .limit(1)
+                .execute()
+            )
+            return result.data[0] if result.data else None
+        except Exception:
+            logger.error("Erro ao buscar usuário por id: user_id=%s", user_id)
             raise
 
     def save_reset_token(self, user_id: str, token_hash: str, expires_at: str) -> None:

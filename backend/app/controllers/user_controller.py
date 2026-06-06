@@ -1,15 +1,52 @@
 from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from app.models.user_models import UserPreferences, UserPreferencesUpdate, PasswordChange, PasswordChangeResponse
 from app.services.user_service import UserService
 from app.repositories.user_repository import UserRepository
 from app.core.dependencies import get_current_user, User
+
+
+class UserInfo(BaseModel):
+    user_id: str
+    nome: str
+    email: str
+    nome_referencia: str | None = None
 
 router = APIRouter(prefix="/api/users", tags=["Configurações"])
 
 
 def get_user_service() -> UserService:
     return UserService(repository=UserRepository())
+
+
+@router.get("/me", response_model=UserInfo, summary="Dados do usuário autenticado")
+async def get_me(
+    current_user: User = Depends(get_current_user),
+    service: UserService = Depends(get_user_service),
+):
+    repo = UserRepository()
+    user = repo.get_by_id(current_user.id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+    return UserInfo(
+        user_id=user["id"],
+        nome=user.get("name") or "",
+        email=user.get("email") or "",
+        nome_referencia=user.get("nome_referencia"),
+    )
+
+
+@router.get(
+    "/preferences",
+    response_model=UserPreferences,
+    summary="Buscar preferências do usuário",
+)
+async def get_preferences(
+    current_user: User = Depends(get_current_user),
+    service: UserService = Depends(get_user_service),
+):
+    return await service.get_preferences(user_id=current_user.id)
 
 
 @router.put(

@@ -2,11 +2,18 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from fastapi.responses import RedirectResponse, JSONResponse
+from pydantic import BaseModel
 
 from app.core.config import get_settings
 from app.repositories.user_repository import UserRepository
 from app.services.auth_service import AuthService
 from app.schemas.auth import UserCreate, UserLogin, PasswordResetRequest, PasswordResetConfirm
+
+
+class MobileAuthResponse(BaseModel):
+    token: str
+    nome: str
+    user_id: str
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
@@ -95,6 +102,36 @@ def logout(response: Response):
         samesite="lax",
     )
     return {"message": "Logout realizado."}
+
+
+@router.post("/mobile/login", response_model=MobileAuthResponse, status_code=200, summary="Login mobile (retorna JSON)")
+async def mobile_login(
+    credentials: UserLogin,
+    service: AuthService = Depends(get_auth_service),
+):
+    try:
+        result = service.login_mobile(credentials)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais inválidas.")
+    except Exception:
+        logger.exception("Erro inesperado no login mobile")
+        raise HTTPException(status_code=500, detail="Erro interno.")
+    return result
+
+
+@router.post("/mobile/register", response_model=MobileAuthResponse, status_code=201, summary="Cadastro mobile (retorna JSON)")
+async def mobile_register(
+    user_data: UserCreate,
+    service: AuthService = Depends(get_auth_service),
+):
+    try:
+        result = service.register_mobile(user_data)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception:
+        logger.exception("Erro inesperado no cadastro mobile")
+        raise HTTPException(status_code=500, detail="Erro interno.")
+    return result
 
 
 @router.post("/password-reset/request", status_code=status.HTTP_200_OK)

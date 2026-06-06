@@ -1,6 +1,3 @@
-// Contexto Global do Shello v2
-// Gerencia estado global com EntradaDiario, Tarefas expandidas e Rotinas
-
 import React, {
   createContext,
   useContext,
@@ -17,69 +14,85 @@ import {
   DadosOnboarding,
   NivelFormalidade,
 } from '../types';
-import {
-  salvarEntrada,
-  atualizarEntrada as atualizarEntradaServico,
-  marcarEntradaComoContexto as marcarEntradaServico,
-  buscarEntradas,
-  salvarTarefa as salvarTarefaServico,
-  buscarTarefas,
-  alternarTarefa as alternarTarefaServico,
-  salvarRotina as salvarRotinaServico,
-  buscarRotinas,
-  removerRotina as removerRotinaServico,
-  salvarDadosOnboarding,
-  buscarDadosOnboarding,
-  salvarMemoria as salvarMemoriaServico,
-  buscarMemorias,
-  removerMemoria as removerMemoriaServico,
-} from '../services/mockServicos';
-
-// ─── Tipos do Contexto ─────────────────────────────────────────────────────
+import api from '../services/api';
+import { getStoredUser, logout as authLogout } from '../services/authService';
 
 interface ShelloContextData {
-  // Estado do usuário
   nomeUsuario: string;
   onboardingConcluido: boolean;
   dadosOnboarding: DadosOnboarding | null;
   carregando: boolean;
   nivelFormalidade: NivelFormalidade;
-
-  // Dados
   entradas: EntradaDiario[];
   tarefas: Tarefa[];
   rotinas: Rotina[];
   memorias: MemoriaIA[];
 
-  // Ações — Diário
   adicionarEntrada: (titulo: string, conteudo: string) => Promise<EntradaDiario>;
   atualizarEntrada: (id: string, titulo: string, conteudo: string) => Promise<void>;
   marcarEntradaComoContexto: (id: string, conteudo: string) => Promise<void>;
 
-  // Ações — Tarefas
   adicionarTarefa: (titulo: string, descricao?: string, data?: string) => Promise<Tarefa>;
   alternarTarefa: (id: string) => Promise<void>;
 
-  // Ações — Rotinas
   adicionarRotina: (titulo: string, atividades: string[], periodo: Rotina['periodo']) => Promise<void>;
   removerRotina: (id: string) => Promise<void>;
 
-  // Ações — Onboarding
   concluirOnboarding: (dados: DadosOnboarding) => Promise<void>;
+  sair: () => Promise<void>;
 
-  // Ações — Memórias
   adicionarMemoria: (conteudo: string, tipo: MemoriaIA['tipo']) => Promise<void>;
   removerMemoria: (id: string) => Promise<void>;
 
-  // Config
   setNivelFormalidade: (nivel: NivelFormalidade) => void;
+  recarregarDados: () => Promise<void>;
+  definirUsuario: (nome: string, onboardingOk: boolean) => void;
 }
-
-// ─── Criação do Contexto ───────────────────────────────────────────────────
 
 const ShelloContext = createContext<ShelloContextData | undefined>(undefined);
 
-// ─── Provider ─────────────────────────────────────────────────────────────
+// ── Mappers ──────────────────────────────────────────────────────────────────
+
+function mapDiaryEntry(d: any): EntradaDiario {
+  return {
+    id: d.id,
+    titulo: (d.content || '').slice(0, 40) + ((d.content || '').length > 40 ? '...' : ''),
+    conteudo: d.content || '',
+    dataCriacao: d.created_at,
+    adicionadaAoContexto: false,
+  };
+}
+
+function mapTask(t: any): Tarefa {
+  return {
+    id: t.id,
+    titulo: t.title,
+    descricao: t.description ?? undefined,
+    concluida: t.status === 'done',
+    data: t.due_date ?? undefined,
+    dataCriacao: t.created_at,
+  };
+}
+
+function mapRotina(r: any): Rotina {
+  return {
+    id: r.id,
+    titulo: r.nome,
+    atividades: r.atividades ?? [],
+    periodo: r.periodo as Rotina['periodo'],
+  };
+}
+
+function mapMemoria(m: any): MemoriaIA {
+  return {
+    id: m.id,
+    tipo: m.tipo as MemoriaIA['tipo'],
+    conteudo: m.conteudo,
+    dataCriacao: m.created_at,
+  };
+}
+
+// ── Provider ──────────────────────────────────────────────────────────────────
 
 export function ShelloProvider({ children }: { children: ReactNode }) {
   const [nomeUsuario, setNomeUsuario] = useState('');
@@ -92,112 +105,162 @@ export function ShelloProvider({ children }: { children: ReactNode }) {
   const [rotinas, setRotinas] = useState<Rotina[]>([]);
   const [memorias, setMemorias] = useState<MemoriaIA[]>([]);
 
-  // Carrega dados iniciais do AsyncStorage
-  useEffect(() => {
-    async function carregarDados() {
-      try {
-        const [entradasCarregadas, tarefasCarregadas, rotinasCarregadas, memoriasCarregadas, onboarding] =
-          await Promise.all([
-            buscarEntradas(),
-            buscarTarefas(),
-            buscarRotinas(),
-            buscarMemorias(),
-            buscarDadosOnboarding(),
-          ]);
-
-        setEntradas(entradasCarregadas);
-        setTarefas(tarefasCarregadas);
-        setRotinas(rotinasCarregadas);
-        setMemorias(memoriasCarregadas);
-
-        if (onboarding) {
-          setDadosOnboarding(onboarding);
-          setNomeUsuario(onboarding.nome);
-          setOnboardingConcluido(true);
-        }
-      } catch (erro) {
-        console.error('Erro ao carregar dados do Shello:', erro);
-      } finally {
+  const carregarDados = useCallback(async () => {
+    try {
+      const user = await getStoredUser();
+      if (!user) {
         setCarregando(false);
+        return;
       }
+      setNomeUsuario(user.nome);
+
+      const [entradasRes, tarefasRes, rotinasRes, memoriasRes, prefsRes] = await Promise.allSettled([
+        api.get('/api/diary'),
+        api.get('/api/tasks'),
+        api.get('/api/routines'),
+        api.get('/api/memories'),
+        api.get('/api/users/preferences'),
+      ]);
+
+      if (entradasRes.status === 'fulfilled') {
+        const items = entradasRes.value.data?.items ?? entradasRes.value.data ?? [];
+        setEntradas(items.map(mapDiaryEntry));
+      }
+      if (tarefasRes.status === 'fulfilled') {
+        setTarefas((tarefasRes.value.data ?? []).map(mapTask));
+      }
+      if (rotinasRes.status === 'fulfilled') {
+        setRotinas((rotinasRes.value.data ?? []).map(mapRotina));
+      }
+      if (memoriasRes.status === 'fulfilled') {
+        setMemorias((memoriasRes.value.data ?? []).map(mapMemoria));
+      }
+      if (prefsRes.status === 'fulfilled') {
+        const prefs = prefsRes.value.data;
+        if (prefs?.formalidade) setNivelFormalidade(prefs.formalidade as NivelFormalidade);
+        if (prefs?.nome_referencia) {
+          setDadosOnboarding((prev) => prev ? { ...prev, nome: prefs.nome_referencia } : prev);
+        }
+      }
+
+      setOnboardingConcluido(true);
+    } catch {
+      // silent — user may not be logged in yet
+    } finally {
+      setCarregando(false);
     }
-    carregarDados();
   }, []);
 
-  // ─── Ações do Diário ──────────────────────────────────────────────────────
+  useEffect(() => {
+    carregarDados();
+  }, [carregarDados]);
+
+  // ── Diário ─────────────────────────────────────────────────────────────────
 
   const adicionarEntrada = useCallback(async (titulo: string, conteudo: string): Promise<EntradaDiario> => {
-    const nova = await salvarEntrada(titulo, conteudo);
+    const { data } = await api.post('/api/diary', { content: conteudo });
+    const nova = mapDiaryEntry(data);
     setEntradas((ant) => [nova, ...ant]);
     return nova;
   }, []);
 
-  const atualizarEntrada = useCallback(async (id: string, titulo: string, conteudo: string): Promise<void> => {
-    const atualizadas = await atualizarEntradaServico(id, titulo, conteudo);
-    setEntradas(atualizadas);
+  const atualizarEntrada = useCallback(async (id: string, _titulo: string, conteudo: string): Promise<void> => {
+    const { data } = await api.put(`/api/diary/${id}`, { content: conteudo });
+    const atualizada = mapDiaryEntry(data);
+    setEntradas((ant) => ant.map((e) => (e.id === id ? atualizada : e)));
   }, []);
 
   const marcarEntradaComoContexto = useCallback(async (id: string, conteudo: string): Promise<void> => {
-    // Adiciona o conteúdo como memória do tipo FATO
-    await salvarMemoriaServico(`Reflexão do diário: ${conteudo.slice(0, 120)}`, 'FATO');
-    const atualizadas = await marcarEntradaServico(id);
-    setEntradas(atualizadas);
-    // Também atualiza memórias no estado
-    const novasMemorias = await buscarMemorias();
-    setMemorias(novasMemorias);
+    await api.post('/api/memories', {
+      conteudo: `Reflexão do diário: ${conteudo.slice(0, 120)}`,
+      tipo: 'FATO',
+    });
+    const { data } = await api.get('/api/memories');
+    setMemorias((data ?? []).map(mapMemoria));
+    setEntradas((ant) =>
+      ant.map((e) => (e.id === id ? { ...e, adicionadaAoContexto: true } : e))
+    );
   }, []);
 
-  // ─── Ações de Tarefas ─────────────────────────────────────────────────────
+  // ── Tarefas ────────────────────────────────────────────────────────────────
 
   const adicionarTarefa = useCallback(async (titulo: string, descricao?: string, data?: string): Promise<Tarefa> => {
-    const nova = await salvarTarefaServico(titulo, descricao, data);
+    const payload: Record<string, unknown> = { title: titulo };
+    if (descricao) payload.description = descricao;
+    if (data) payload.due_date = data;
+    const { data: res } = await api.post('/api/tasks', payload);
+    const nova = mapTask(res);
     setTarefas((ant) => [...ant, nova]);
     return nova;
   }, []);
 
   const alternarTarefa = useCallback(async (id: string): Promise<void> => {
-    const atualizadas = await alternarTarefaServico(id);
-    setTarefas(atualizadas);
-  }, []);
+    const tarefa = tarefas.find((t) => t.id === id);
+    const novoStatus = tarefa?.concluida ? 'pending' : 'done';
+    const { data } = await api.patch(`/api/tasks/${id}`, { status: novoStatus });
+    const atualizada = mapTask(data);
+    setTarefas((ant) => ant.map((t) => (t.id === id ? atualizada : t)));
+  }, [tarefas]);
 
-  // ─── Ações de Rotinas ─────────────────────────────────────────────────────
+  // ── Rotinas ────────────────────────────────────────────────────────────────
 
   const adicionarRotina = useCallback(async (
     titulo: string,
     atividades: string[],
-    periodo: Rotina['periodo']
+    periodo: Rotina['periodo'],
   ): Promise<void> => {
-    const nova = await salvarRotinaServico(titulo, atividades, periodo);
-    setRotinas((ant) => [...ant, nova]);
+    const { data } = await api.post('/api/routines', { nome: titulo, atividades, periodo });
+    setRotinas((ant) => [...ant, mapRotina(data)]);
   }, []);
 
   const removerRotina = useCallback(async (id: string): Promise<void> => {
-    const restantes = await removerRotinaServico(id);
-    setRotinas(restantes);
+    await api.delete(`/api/routines/${id}`);
+    setRotinas((ant) => ant.filter((r) => r.id !== id));
   }, []);
 
-  // ─── Ações de Onboarding ──────────────────────────────────────────────────
+  // ── Onboarding ─────────────────────────────────────────────────────────────
 
   const concluirOnboarding = useCallback(async (dados: DadosOnboarding): Promise<void> => {
-    await salvarDadosOnboarding(dados);
+    await api.post('/api/onboarding/complete', {
+      nome: dados.nome,
+      estiloDeVida: dados.estiloDeVida,
+      metaAtual: dados.metaAtual,
+    });
     setDadosOnboarding(dados);
     setNomeUsuario(dados.nome);
     setOnboardingConcluido(true);
+    await carregarDados();
+  }, [carregarDados]);
+
+  const sair = useCallback(async (): Promise<void> => {
+    await authLogout();
+    setNomeUsuario('');
+    setOnboardingConcluido(false);
+    setDadosOnboarding(null);
+    setEntradas([]);
+    setTarefas([]);
+    setRotinas([]);
+    setMemorias([]);
   }, []);
 
-  // ─── Ações de Memórias ────────────────────────────────────────────────────
+  // ── Memórias ───────────────────────────────────────────────────────────────
 
   const adicionarMemoria = useCallback(async (conteudo: string, tipo: MemoriaIA['tipo']): Promise<void> => {
-    const nova = await salvarMemoriaServico(conteudo, tipo);
-    setMemorias((ant) => [...ant, nova]);
+    const { data } = await api.post('/api/memories', { conteudo, tipo });
+    setMemorias((ant) => [...ant, mapMemoria(data)]);
   }, []);
 
   const removerMemoria = useCallback(async (id: string): Promise<void> => {
-    const restantes = await removerMemoriaServico(id);
-    setMemorias(restantes);
+    await api.delete(`/api/memories/${id}`);
+    setMemorias((ant) => ant.filter((m) => m.id !== id));
   }, []);
 
-  // ─── Valor do Contexto ────────────────────────────────────────────────────
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  const definirUsuario = useCallback((nome: string, onboardingOk: boolean) => {
+    setNomeUsuario(nome);
+    setOnboardingConcluido(onboardingOk);
+  }, []);
 
   const valor: ShelloContextData = {
     nomeUsuario,
@@ -217,21 +280,20 @@ export function ShelloProvider({ children }: { children: ReactNode }) {
     adicionarRotina,
     removerRotina,
     concluirOnboarding,
+    sair,
     adicionarMemoria,
     removerMemoria,
     setNivelFormalidade,
+    recarregarDados: carregarDados,
+    definirUsuario,
   };
 
   return <ShelloContext.Provider value={valor}>{children}</ShelloContext.Provider>;
 }
 
-// ─── Hook ─────────────────────────────────────────────────────────────────
-
 export function useShello(): ShelloContextData {
   const contexto = useContext(ShelloContext);
-  if (!contexto) {
-    throw new Error('useShello deve ser usado dentro de um ShelloProvider');
-  }
+  if (!contexto) throw new Error('useShello deve ser usado dentro de um ShelloProvider');
   return contexto;
 }
 

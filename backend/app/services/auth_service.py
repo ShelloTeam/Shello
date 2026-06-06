@@ -28,6 +28,28 @@ class AuthService:
 
     # ── NOVO ──────────────────────────────────────────────────────────────
 
+    def login_mobile(self, credentials: UserLogin) -> dict:
+        """Login para mobile — retorna JSON com token e nome."""
+        user = self._repo.get_by_email(credentials.email)
+        dummy_hash = "$2b$12$inexistenteHashParaTimingConstante000000000000000000000"
+        stored_hash = user["password_hash"] if user else dummy_hash
+        password_ok = verify_password(credentials.password, stored_hash)
+        if not user or not password_ok:
+            raise ValueError("Credenciais inválidas.")
+        token = create_access_token(data={"sub": str(user["id"])})
+        logger.info("Login mobile: user_id=%s", user["id"])
+        return {"token": token, "nome": user.get("name") or "", "user_id": str(user["id"])}
+
+    def register_mobile(self, user_data: UserCreate) -> dict:
+        """Cadastro para mobile — retorna JSON com token e nome."""
+        if self._repo.email_exists(user_data.email):
+            raise ValueError("E-mail já cadastrado.")
+        hashed = hash_password(user_data.password)
+        user = self._repo.create_user(email=user_data.email, hashed_password=hashed, nome=user_data.nome)
+        token = create_access_token(data={"sub": str(user["id"])})
+        logger.info("Cadastro mobile: user_id=%s", user["id"])
+        return {"token": token, "nome": user_data.nome, "user_id": str(user["id"])}
+
     def login_user(self, credentials: UserLogin) -> str:
         """
         Verifica credenciais e retorna JWT.

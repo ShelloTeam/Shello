@@ -27,6 +27,7 @@ import { Feather } from '@expo/vector-icons';
 import { ShelloTema } from '../styles/tema';
 import { useShello } from '../contexts/ShelloContext';
 import { MensagemChat, ExpressaoShello } from '../types';
+import api from '../services/api';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const LIMITE_MENSAGENS = 20;
@@ -187,7 +188,7 @@ function CardTarefaSugerida({ titulo, aoConfirmar, aoCancelar }: CardTarefaProps
 // ─── Tela Principal: TelaChat ─────────────────────────────────────────────────
 
 export default function TelaChat(): React.JSX.Element {
-  const { nomeUsuario, dadosOnboarding, memorias, entradas, adicionarTarefa } = useShello();
+  const { nomeUsuario, adicionarTarefa } = useShello();
 
   const [mensagens, setMensagens] = useState<MensagemChat[]>([]);
   const [inputTexto, setInputTexto] = useState('');
@@ -195,6 +196,7 @@ export default function TelaChat(): React.JSX.Element {
   const [expressaoAtual, setExpressaoAtual] = useState<ExpressaoShello>('feliz');
   const [tarefaSugerida, setTarefaSugerida] = useState<string | null>(null);
   const [confirmacaoTarefa, setConfirmacaoTarefa] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
 
   const flatListRef = useRef<FlatList<MensagemChat>>(null);
 
@@ -218,77 +220,9 @@ export default function TelaChat(): React.JSX.Element {
 
   const mostrarSugestoes = mensagens.length < 3;
 
-  // ── Gerador de respostas mockadas contextualizadas ───────────────────────
-  const gerarResposta = useCallback(
-    (pergunta: string): { texto: string; expressao: ExpressaoShello; tarefaSug?: string } => {
-      const txt = pergunta.toLowerCase();
-      const nome = nomeUsuario || 'você';
-      const meta = dadosOnboarding?.metaAtual || 'seus objetivos';
-      const estilo = dadosOnboarding?.estiloDeVida || 'seu estilo de vida';
-      const qtdMem = memorias.length;
-      const qtdEnt = entradas.length;
-
-      if (txt.includes('meta') || txt.includes('objetivo') || txt.includes('melhorar')) {
-        return {
-          texto: `${nome}, você mencionou que quer melhorar "${meta}". Que tal definirmos um pequeno passo para hoje? 🎯`,
-          expressao: 'feliz',
-          tarefaSug: `Pequeno passo rumo a: ${meta}`,
-        };
-      }
-      if (txt.includes('diário') || txt.includes('registro') || txt.includes('escrever')) {
-        const pl = qtdEnt === 1 ? 'registro' : 'registros';
-        return {
-          texto: `Você tem ${qtdEnt} ${pl} no diário. Escrever regularmente é uma das práticas mais poderosas! ✍️`,
-          expressao: 'feliz',
-        };
-      }
-      if (txt.includes('triste') || txt.includes('difícil') || txt.includes('cansado') || txt.includes('mal')) {
-        return {
-          texto: `Eu entendo, ${nome}. O que você está sentindo tem valor. Quer me contar mais?`,
-          expressao: 'duvidoso',
-        };
-      }
-      if (txt.includes('quem') || txt.includes('você é') || txt.includes('shello')) {
-        const plM = qtdMem === 1 ? 'memória' : 'memórias';
-        return {
-          texto: `Sou o Shello, seu companheiro de crescimento. Já guardei ${qtdMem} ${plM} sobre você! 🐢`,
-          expressao: 'surpreso',
-        };
-      }
-      if (txt.includes('gratidão') || txt.includes('agradecer') || txt.includes('feliz')) {
-        return {
-          texto: `Que lindo, ${nome}! Tente listar 3 coisas pelas quais você é grato hoje. 🌸`,
-          expressao: 'feliz',
-          tarefaSug: 'Listar 3 gratidões do dia',
-        };
-      }
-      if (txt.includes('rotina') || txt.includes('estilo') || txt.includes('dia a dia')) {
-        return {
-          texto: `Você me contou que seu estilo de vida é: "${estilo}". Posso te ajudar a criar rotinas mais alinhadas com quem você quer ser!`,
-          expressao: 'neutro',
-        };
-      }
-      if (txt.includes('refletir') || txt.includes('dia') || txt.includes('hoje')) {
-        return {
-          texto: `Refletir sobre o dia é poderoso, ${nome}. O que foi mais significativo para você hoje? Que momento te marcou?`,
-          expressao: 'neutro',
-          tarefaSug: 'Reflexão diária antes de dormir',
-        };
-      }
-      // resposta padrão
-      const sugerirTarefa = Math.random() < 0.25;
-      return {
-        texto: `Interessante, ${nome}. Cada reflexão que você faz me ajuda a te conhecer melhor. Quer explorar mais esse tema?`,
-        expressao: 'neutro',
-        tarefaSug: sugerirTarefa ? 'Explorar esse tema no diário' : undefined,
-      };
-    },
-    [nomeUsuario, dadosOnboarding, memorias, entradas]
-  );
-
   // ── Enviar mensagem ──────────────────────────────────────────────────────
   const enviarMensagem = useCallback(
-    (texto: string) => {
+    async (texto: string) => {
       const txt = texto.trim();
       if (!txt || pensando || atingiuLimite) return;
 
@@ -304,26 +238,38 @@ export default function TelaChat(): React.JSX.Element {
       setTarefaSugerida(null);
       setConfirmacaoTarefa(null);
 
-      setTimeout(() => {
-        const resposta = gerarResposta(txt);
-        setExpressaoAtual(resposta.expressao);
+      try {
+        const { data } = await api.post('/api/chat', {
+          message: txt,
+          conversation_id: conversationId ?? undefined,
+        });
+
+        const expressao: ExpressaoShello = 'neutro';
+        setExpressaoAtual(expressao);
+        setConversationId(data.conversation_id);
 
         const msgIA: MensagemChat = {
           id: gerarId(),
           remetente: 'ia',
-          conteudo: resposta.texto,
+          conteudo: data.response,
           horario: horaAtual(),
-          expressao: resposta.expressao,
+          expressao,
         };
         setMensagens((ant) => [msgIA, ...ant]);
+      } catch {
+        const msgErro: MensagemChat = {
+          id: gerarId(),
+          remetente: 'ia',
+          conteudo: 'Não consegui me conectar agora. Tente novamente em instantes. 🐢',
+          horario: horaAtual(),
+          expressao: 'duvidoso',
+        };
+        setMensagens((ant) => [msgErro, ...ant]);
+      } finally {
         setPensando(false);
-
-        if (resposta.tarefaSug) {
-          setTarefaSugerida(resposta.tarefaSug);
-        }
-      }, 2800);
+      }
     },
-    [pensando, atingiuLimite, gerarResposta]
+    [pensando, atingiuLimite, conversationId]
   );
 
   // ── Confirmar tarefa sugerida ────────────────────────────────────────────
@@ -355,6 +301,7 @@ export default function TelaChat(): React.JSX.Element {
     setTarefaSugerida(null);
     setConfirmacaoTarefa(null);
     setExpressaoAtual('feliz');
+    setConversationId(null);
   }, [nomeUsuario]);
 
   // ── Renderização de mensagem ──────────────────────────────────────────────

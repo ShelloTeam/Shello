@@ -20,6 +20,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { ShelloTema } from '../styles/tema';
 import { useShello } from '../contexts/ShelloContext';
+import { login, register } from '../services/authService';
+import api from '../services/api';
 
 // Logo do mascote Shello
 const LOGO_SHELLO = require('../../assets/logoshello.jpeg');
@@ -51,7 +53,7 @@ interface TelaAutenticacaoProps {
 }
 
 export default function TelaAutenticacao({ navigation }: TelaAutenticacaoProps) {
-  const { onboardingConcluido } = useShello();
+  const { definirUsuario, recarregarDados } = useShello();
 
   // Estado do formulário ativo
   const [formularioAtivo, setFormularioAtivo] = useState<FormularioAtivo>('login');
@@ -79,10 +81,9 @@ export default function TelaAutenticacao({ navigation }: TelaAutenticacaoProps) 
   const [senhaVisivel, setSenhaVisivel] = useState(false);
   const [confirmarSenhaVisivel, setConfirmarSenhaVisivel] = useState(false);
 
-  // Estado de carregamento
   const [carregando, setCarregando] = useState(false);
+  const [erroMensagem, setErroMensagem] = useState<string | null>(null);
 
-  // Animação de transição entre formulários
   const opacidadeAnimada = useRef(new Animated.Value(1)).current;
 
   // ─── Funções de Navegação entre Formulários ───────────────────────────────
@@ -112,16 +113,35 @@ export default function TelaAutenticacao({ navigation }: TelaAutenticacaoProps) 
   const handleAcaoPrincipal = useCallback(async () => {
     if (carregando) return;
     setCarregando(true);
+    setErroMensagem(null);
 
-    // Simula chamada de API com 800ms de espera
-    await new Promise<void>((resolve) => setTimeout(resolve, 800));
+    try {
+      if (formularioAtivo === 'login') {
+        const user = await login(camposLogin.email, camposLogin.senha);
+        definirUsuario(user.nome, false);
+        await recarregarDados();
+        definirUsuario(user.nome, true);
 
-    setCarregando(false);
+      } else if (formularioAtivo === 'cadastro') {
+        if (camposCadastro.senha !== camposCadastro.confirmarSenha) {
+          setErroMensagem('As senhas não coincidem.');
+          return;
+        }
+        const user = await register(camposCadastro.nome, camposCadastro.email, camposCadastro.senha);
+        definirUsuario(user.nome, false);
+        navigation.navigate('Onboarding');
 
-    // Navega para o Onboarding — onde o usuário vai preencher seu contexto
-    // O Onboarding chama concluirOnboarding() que seta onboardingConcluido = true
-    navigation.navigate('Onboarding');
-  }, [carregando, navigation]);
+      } else if (formularioAtivo === 'recuperar') {
+        await api.post('/api/v1/auth/password-reset/request', { email: camposRecuperar.email });
+        setErroMensagem('Se o e-mail estiver cadastrado, você receberá um link em breve.');
+      }
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      setErroMensagem(detail ?? 'Ocorreu um erro. Tente novamente.');
+    } finally {
+      setCarregando(false);
+    }
+  }, [carregando, formularioAtivo, camposLogin, camposCadastro, camposRecuperar, navigation, definirUsuario, recarregarDados]);
 
 
   // ─── Renderização da Logo ─────────────────────────────────────────────────
@@ -217,6 +237,8 @@ export default function TelaAutenticacao({ navigation }: TelaAutenticacaoProps) 
         senhaVisivel: senhaVisivel,
         aoAlternarSenha: () => setSenhaVisivel((v) => !v),
       })}
+
+      {erroMensagem ? <Text style={estilos.textoErro}>{erroMensagem}</Text> : null}
 
       <TouchableOpacity
         style={estilos.botaoPrincipal}
@@ -574,7 +596,13 @@ const estilos = StyleSheet.create({
     opacity: 0.4,
   },
 
-  // Rodapé
+  textoErro: {
+    fontSize: ShelloTema.tipografia.tamanhos.pequeno,
+    color: ShelloTema.cores.erro,
+    marginBottom: ShelloTema.espacamento.sm,
+    textAlign: 'center',
+  },
+
   rodape: {
     alignItems: 'center',
     paddingTop: ShelloTema.espacamento.lg,

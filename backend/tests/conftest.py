@@ -8,7 +8,11 @@ from app.controllers.chat_controller import get_chat_service
 from app.controllers.history_controller import get_history_service
 from app.controllers.tasks_controller import get_task_service
 from app.controllers.user_controller import get_user_service
+from app.controllers.routines_controller import get_routine_service
+from app.controllers.memories_controller import get_memory_service
 from app.models.user_models import UserPreferences
+from app.models.routine_models import Routine
+from app.models.memory_models import Memory
 from app.models.diary_models import DiaryEntry, DiaryListResponse
 from app.models.chat_models import Conversation, ChatResponse
 from app.models.history_models import HistoryItem, HistoryResponse
@@ -215,3 +219,87 @@ def auth_headers():
 @pytest.fixture
 def auth_headers_user2():
     return {"Authorization": "Bearer test-token-user-2"}
+
+
+# ── ROUTINES FIXTURES ──────────────────────────────────────────────────────────
+
+def make_mock_routine_service(not_found=False):
+    from app.services.routine_service import RoutineService
+    svc = MagicMock(spec=RoutineService)
+
+    sample = Routine(
+        id="r-uuid", user_id="user-1", nome="Manhã saudável",
+        atividades=["Água", "Meditação"], periodo="manha",
+        created_at="2024-01-01T00:00:00Z", updated_at="2024-01-01T00:00:00Z",
+    )
+
+    svc.list = AsyncMock(return_value=[sample])
+    svc.create = AsyncMock(return_value=sample)
+
+    if not_found:
+        svc.delete = AsyncMock(side_effect=KeyError("Rotina não encontrada."))
+        svc.update = AsyncMock(side_effect=KeyError("Rotina não encontrada."))
+    else:
+        svc.delete = AsyncMock(return_value=True)
+        svc.update = AsyncMock(return_value=sample)
+
+    return svc
+
+
+@pytest.fixture
+async def client_routines_ok():
+    app.dependency_overrides[get_supabase] = lambda: make_mock_supabase()
+    app.dependency_overrides[get_routine_service] = lambda: make_mock_routine_service()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def client_routines_not_found():
+    app.dependency_overrides[get_supabase] = lambda: make_mock_supabase()
+    app.dependency_overrides[get_routine_service] = lambda: make_mock_routine_service(not_found=True)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
+    app.dependency_overrides.clear()
+
+
+# ── MEMORIES FIXTURES ──────────────────────────────────────────────────────────
+
+def make_mock_memory_service(not_found=False):
+    from app.services.memory_service import MemoryService
+    svc = MagicMock(spec=MemoryService)
+
+    sample = Memory(
+        id="m-uuid", user_id="user-1",
+        conteudo="Prefere emails curtos", tipo="PREFERENCIA",
+        created_at="2024-01-01T00:00:00Z",
+    )
+
+    svc.list = AsyncMock(return_value=[sample])
+    svc.create = AsyncMock(return_value=sample)
+
+    if not_found:
+        svc.delete = AsyncMock(side_effect=KeyError("Memória não encontrada."))
+    else:
+        svc.delete = AsyncMock(return_value=True)
+
+    return svc
+
+
+@pytest.fixture
+async def client_memories_ok():
+    app.dependency_overrides[get_supabase] = lambda: make_mock_supabase()
+    app.dependency_overrides[get_memory_service] = lambda: make_mock_memory_service()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def client_memories_not_found():
+    app.dependency_overrides[get_supabase] = lambda: make_mock_supabase()
+    app.dependency_overrides[get_memory_service] = lambda: make_mock_memory_service(not_found=True)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
+    app.dependency_overrides.clear()

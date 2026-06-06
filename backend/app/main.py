@@ -11,6 +11,9 @@ from app.controllers.chat_controller import router as chat_router
 from app.controllers.history_controller import router as history_router
 from app.controllers.tasks_controller import router as tasks_router
 from app.controllers.user_controller import router as user_router
+from app.controllers.routines_controller import router as routines_router
+from app.controllers.memories_controller import router as memories_router
+from app.controllers.onboarding_controller import router as onboarding_mobile_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.onboarding import router as onboarding_router
 from app.api.v1.context_fragments import router as context_router
@@ -20,6 +23,8 @@ tags_metadata = [
     {"name": "Auth",          "description": "Autenticação e onboarding"},
     {"name": "Diário",        "description": "CRUD de anotações pessoais"},
     {"name": "Tarefas",       "description": "Gestão de tarefas (ToDo)"},
+    {"name": "Rotinas",       "description": "Rotinas diárias (manhã/tarde/noite)"},
+    {"name": "Memórias IA",   "description": "Memórias persistentes do agente Shello"},
     {"name": "Chat",          "description": "Conversas com o agente Shello"},
     {"name": "Contexto",      "description": "Fragmentos de contexto do agente"},
     {"name": "Configurações", "description": "Preferências de conta e do agente"},
@@ -76,6 +81,9 @@ app.include_router(chat_router)
 app.include_router(history_router)
 app.include_router(tasks_router)
 app.include_router(user_router)
+app.include_router(routines_router)
+app.include_router(memories_router)
+app.include_router(onboarding_mobile_router)
 app.include_router(auth_router)
 app.include_router(onboarding_router)
 app.include_router(context_router)

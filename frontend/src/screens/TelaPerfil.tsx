@@ -191,7 +191,7 @@ export default function TelaPerfil() {
     removerMemoria,
     nivelFormalidade,
     setNivelFormalidade,
-    concluirOnboarding,
+    sair,
     dadosOnboarding,
   } = useShello();
 
@@ -217,27 +217,24 @@ export default function TelaPerfil() {
     [removerMemoria]
   );
 
-  // Handler de salvar nome de referência (mock — atualiza preferências)
   const handleSalvarNome = useCallback(async () => {
     if (!nomeReferencia.trim()) return;
     setSalvandoNome(true);
     try {
-      // Mock: simula chamada à rota PUT /api/users/preferences
-      await new Promise<void>((resolve) => setTimeout(resolve, 500));
-      // Notificação visual de sucesso
-      Alert.alert('✅ Salvo', `O Shello vai te chamar de "${nomeReferencia.trim()}" agora.`);
-    } catch (erro) {
-      console.error('Erro ao salvar nome de referência:', erro);
+      const api = (await import('../services/api')).default;
+      await api.put('/api/users/preferences', { nome_referencia: nomeReferencia.trim() });
+      Alert.alert('Salvo', `O Shello vai te chamar de "${nomeReferencia.trim()}" agora.`);
+    } catch {
+      Alert.alert('Erro', 'Não foi possível salvar. Tente novamente.');
     } finally {
       setSalvandoNome(false);
     }
   }, [nomeReferencia]);
 
-  // Handler de saída: limpa os dados do contexto com valores vazios
   const handleSair = useCallback(() => {
     Alert.alert(
       'Sair da conta',
-      'Deseja mesmo sair? Seus dados salvos serão mantidos.',
+      'Deseja mesmo sair?',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -245,7 +242,7 @@ export default function TelaPerfil() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await concluirOnboarding({ nome: '', estiloDeVida: '', metaAtual: '' });
+              await sair();
             } catch (erro) {
               console.error('Erro ao sair:', erro);
             }
@@ -253,7 +250,7 @@ export default function TelaPerfil() {
         },
       ]
     );
-  }, [concluirOnboarding]);
+  }, [sair]);
 
   // Obtém o primeiro nome do usuário para exibição
   const primeiroNome = nomeUsuario.split(' ')[0] || 'Usuário';
