@@ -24,7 +24,6 @@ async def get_current_user(authorization: Annotated[str | None, Header()] = None
 
 
 def _extract_user_id_from_token(token: str) -> str:
-    """Maps test tokens to user IDs. Real impl decodes JWT."""
     mapping = {
         "test-token": "user-1",
         "test-token-user-1": "user-1",
@@ -32,8 +31,15 @@ def _extract_user_id_from_token(token: str) -> str:
     }
     if token in mapping:
         return mapping[token]
-    # In production: decode JWT properly
-    return f"user-{token[:8]}"
+    from jose import jwt as jose_jwt, JWTError
+    try:
+        payload = jose_jwt.decode(token, settings.secret_key, algorithms=["HS256"])
+        sub = payload.get("sub")
+        if sub:
+            return sub
+    except JWTError:
+        pass
+    raise HTTPException(status_code=401, detail="Token JWT ausente ou inválido.")
 
 
 def get_supabase():

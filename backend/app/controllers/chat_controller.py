@@ -3,6 +3,7 @@ from app.models.chat_models import ChatRequest, ChatResponse
 from app.services.chat_service import ChatService
 from app.repositories.chat_repository import ChatRepository
 from app.repositories.context_repository import ContextRepository
+from app.repositories.user_repository import UserRepository
 from app.core.dependencies import get_current_user, get_supabase, User
 from app.core.llm.exceptions import LLMProviderError
 from app.core.config import settings
@@ -20,6 +21,10 @@ def get_chat_service(db=Depends(get_supabase)) -> ChatService:
         llm_provider=llm,
         context_repository=context_repo,
     )
+
+
+def get_user_repo() -> UserRepository:
+    return UserRepository()
 
 
 @router.post(
@@ -49,9 +54,20 @@ async def send_message(
     body: ChatRequest,
     current_user: User = Depends(get_current_user),
     service: ChatService = Depends(get_chat_service),
+    user_repo: UserRepository = Depends(get_user_repo),
 ):
     try:
-        return await service.send(user_id=current_user.id, message=body.message)
+        prefs = await user_repo.get_preferences(current_user.id)
+        user_name = prefs.nome_referencia or "usuário"
+        formalidade = prefs.formalidade or "media"
+
+        return await service.send(
+            user_id=current_user.id,
+            message=body.message,
+            conversation_id=body.conversation_id,
+            user_name=user_name,
+            formalidade=formalidade,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except LLMProviderError as e:

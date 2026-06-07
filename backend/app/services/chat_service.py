@@ -99,8 +99,8 @@ class ChatService:
                 message_count=conversation.message_count,
             )
 
-        await self.chat_repository.save_message(conversation.id, "user", message)
-        await self.chat_repository.save_message(conversation.id, "assistant", llm_response)
+        await self.chat_repository.save_message(conversation.id, "user", message, user_id=user_id)
+        await self.chat_repository.save_message(conversation.id, "assistant", llm_response, user_id=user_id)
         await self.chat_repository.increment_message_count(conversation.id)
 
         return ChatResponse(

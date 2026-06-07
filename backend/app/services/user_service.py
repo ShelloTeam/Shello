@@ -1,6 +1,7 @@
 from __future__ import annotations
 from app.models.user_models import UserPreferences
 from app.repositories.user_repository import UserRepository
+from app.core.security import hash_password
 
 
 class UserService:
@@ -40,4 +41,5 @@ class UserService:
         valid = await self.repository.verify_password(user_id=user_id, current_password=current_password)
         if not valid:
             raise PermissionError("Senha atual incorreta.")
-        await self.repository.update_password(user_id=user_id, new_password=new_password)
+        hashed = hash_password(new_password)
+        self.repository.update_password(user_id=user_id, hashed_password=hashed)

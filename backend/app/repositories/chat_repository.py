@@ -15,7 +15,7 @@ class ChatRepository:
             self.db.table("conversations")
             .select("*")
             .eq("user_id", user_id)
-            .eq("is_active", True)
+            .eq("status", "active")
             .limit(1)
             .execute()
         )
@@ -26,20 +26,27 @@ class ChatRepository:
     async def create_conversation(self, user_id: str) -> Conversation:
         result = (
             self.db.table("conversations")
-            .insert({"user_id": user_id, "message_count": 0, "is_active": True})
+            .insert({"user_id": user_id, "message_count": 0, "status": "active"})
             .execute()
         )
         return Conversation(**result.data[0])
 
-    async def save_message(self, conversation_id: str, role: str, content: str) -> None:
-        self.db.table("messages").insert({
-            "conversation_id": conversation_id,
-            "role": role,
-            "content": content,
-        }).execute()
+    async def save_message(self, conversation_id: str, role: str, content: str, user_id: str = "") -> None:
+        row = {"conversation_id": conversation_id, "role": role, "content": content}
+        if user_id:
+            row["user_id"] = user_id
+        self.db.table("messages").insert(row).execute()
 
     async def increment_message_count(self, conversation_id: str) -> None:
-        self.db.rpc("increment_message_count", {"conv_id": conversation_id}).execute()
+        current = (
+            self.db.table("conversations")
+            .select("message_count")
+            .eq("id", conversation_id)
+            .single()
+            .execute()
+        )
+        new_count = (current.data.get("message_count") or 0) + 2
+        self.db.table("conversations").update({"message_count": new_count}).eq("id", conversation_id).execute()
 
     async def get_history(self, conversation_id: str, limit: int = 20) -> list[dict]:
         result = (
@@ -53,6 +60,6 @@ class ChatRepository:
         return [{"role": r["role"], "content": r["content"]} for r in result.data]
 
     async def archive_before(self, cutoff: datetime) -> None:
-        self.db.table("conversations").update({"is_active": False}).lt(
+        self.db.table("conversations").update({"status": "archived"}).lt(
             "updated_at", cutoff.isoformat()
         ).execute()
