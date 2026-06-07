@@ -72,10 +72,10 @@ async def test_task_service_create_sets_due_date_null():
     from app.models.task_models import Task
 
     mock_repo = MagicMock(spec=TaskRepository)
-    mock_repo.create = AsyncMock(return_value=Task(
-        id="task-uuid", user_id="u1", title="Comprar pão",
-        status="pending", due_date=None,
-    ))
+    mock_repo.create = MagicMock(return_value={
+        "id": "task-uuid", "user_id": "u1", "title": "Comprar pão",
+        "status": "pending", "due_date": None,
+    })
 
     service = TaskService(repository=mock_repo)
     task = await service.create(user_id="u1", title="Comprar pão")
