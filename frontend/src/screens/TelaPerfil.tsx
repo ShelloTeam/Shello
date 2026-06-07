@@ -198,11 +198,15 @@ export default function TelaPerfil() {
   } = useShello();
 
   const [nomeReferencia, setNomeReferencia] = useState(
-    dadosOnboarding?.nome.split(' ')[0] ?? nomeUsuario.split(' ')[0] ?? ''
+    nomeUsuario || dadosOnboarding?.nome.split(' ')[0] || ''
   );
   const [salvandoNome, setSalvandoNome] = useState(false);
   const [emailReal, setEmailReal] = useState('');
   const [nomeReal, setNomeReal] = useState('');
+
+  useEffect(() => {
+    if (nomeUsuario) setNomeReferencia(nomeUsuario);
+  }, [nomeUsuario]);
 
   useEffect(() => {
     api.get('/api/users/me')
@@ -264,7 +268,7 @@ export default function TelaPerfil() {
     );
   }, [sair]);
 
-  const primeiroNome = nomeReal.split(' ')[0] || nomeUsuario.split(' ')[0] || 'Usuário';
+  const primeiroNome = nomeReferencia || nomeReal.split(' ')[0] || nomeUsuario.split(' ')[0] || 'Usuário';
   const emailExibido = emailReal || '…';
 
   return (

@@ -47,6 +47,7 @@ class ChatService:
         conversation_id: str | None = None,
         user_name: str = "usuário",
         formalidade: str = "media",
+        onboarding: dict | None = None,
     ) -> ChatResponse:
         """
         Processa mensagem e retorna resposta do agente.
@@ -80,6 +81,7 @@ class ChatService:
             history=history,
             mode=mode,
             message=message,
+            onboarding=onboarding,
         )
 
         llm_response = await self.llm_provider.generate(

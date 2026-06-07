@@ -80,9 +80,9 @@ class ContextFragmentRepository:
                 "content": content,
                 "category": category,
                 "is_active": True,
+                "derived_from_diary_id": None,
+                "derived_from_conversation_id": derived_from_conversation_id or None,
             }
-            if derived_from_conversation_id:
-                payload["derived_from_conversation_id"] = derived_from_conversation_id
 
             result = self._client.table("context_fragments").insert(payload).execute()
             if not result.data:

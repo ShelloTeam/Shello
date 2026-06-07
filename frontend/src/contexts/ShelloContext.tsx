@@ -190,7 +190,7 @@ export function ShelloProvider({ children }: { children: ReactNode }) {
 
   const marcarEntradaComoContexto = useCallback(async (id: string, conteudo: string): Promise<void> => {
     await api.post('/api/memories', {
-      conteudo: `Reflexão do diário: ${conteudo.slice(0, 120)}`,
+      conteudo: `Reflexão do diário: ${conteudo.slice(0, 450)}`,
       tipo: 'FATO',
     });
     const { data } = await api.get('/api/memories');
