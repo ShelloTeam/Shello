@@ -295,7 +295,7 @@ function ModalNovaTarefa({
             onChangeText={(t) => { setDataTexto(t); setErroData(''); }}
             placeholder="dd/mm/aaaa"
             placeholderTextColor={ShelloTema.cores.textoS}
-            keyboardType="numeric"
+            keyboardType="default"
             returnKeyType="done"
             onSubmitEditing={handleAdicionar}
             maxLength={10}

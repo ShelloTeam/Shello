@@ -4,7 +4,7 @@ from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.core.dependencies import get_supabase
 from app.controllers.diary_controller import get_diary_service
-from app.controllers.chat_controller import get_chat_service
+from app.controllers.chat_controller import get_chat_service, get_user_repo
 from app.controllers.history_controller import get_history_service
 from app.controllers.tasks_controller import get_task_service
 from app.controllers.user_controller import get_user_service
@@ -56,6 +56,12 @@ def make_mock_diary_service():
     return svc
 
 
+def make_mock_user_repo():
+    repo = MagicMock()
+    repo.get_preferences = AsyncMock(return_value=UserPreferences(formalidade="media", nome_referencia="Teste"))
+    return repo
+
+
 def make_mock_chat_service(raise_503=False, raise_400=False):
     from app.services.chat_service import ChatService
     svc = MagicMock(spec=ChatService)
@@ -85,6 +91,7 @@ async def client():
     app.dependency_overrides[get_supabase] = lambda: make_mock_supabase()
     app.dependency_overrides[get_diary_service] = lambda: make_mock_diary_service()
     app.dependency_overrides[get_chat_service] = lambda: make_mock_chat_service(raise_503=True)
+    app.dependency_overrides[get_user_repo] = lambda: make_mock_user_repo()
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
@@ -98,6 +105,7 @@ async def client_chat_ok():
     app.dependency_overrides[get_supabase] = lambda: make_mock_supabase()
     app.dependency_overrides[get_diary_service] = lambda: make_mock_diary_service()
     app.dependency_overrides[get_chat_service] = lambda: make_mock_chat_service()
+    app.dependency_overrides[get_user_repo] = lambda: make_mock_user_repo()
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
@@ -110,6 +118,7 @@ async def client_chat_limit():
     """Client where chat raises 400 (limit exceeded)."""
     app.dependency_overrides[get_supabase] = lambda: make_mock_supabase()
     app.dependency_overrides[get_chat_service] = lambda: make_mock_chat_service(raise_400=True)
+    app.dependency_overrides[get_user_repo] = lambda: make_mock_user_repo()
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:

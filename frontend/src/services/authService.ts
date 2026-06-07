@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
-const API_BASE = process.env.API_URL ?? 'http://localhost:8000';
+const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000';
 
 const TOKEN_KEY = '@shello:token';
 const USER_KEY = '@shello:user';

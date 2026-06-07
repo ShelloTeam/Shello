@@ -319,6 +319,8 @@ export default function TelaAutenticacao({ navigation }: TelaAutenticacaoProps) 
         }
       )}
 
+      {erroMensagem ? <Text style={estilos.textoErro}>{erroMensagem}</Text> : null}
+
       <TouchableOpacity
         style={estilos.botaoPrincipal}
         onPress={handleAcaoPrincipal}

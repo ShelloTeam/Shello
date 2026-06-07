@@ -1,7 +1,7 @@
 // TelaPerfil.tsx — Tela de Perfil do Usuário
 // Exibe dados do perfil, personalidade da IA, memórias e opções de conta
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import { Feather } from '@expo/vector-icons';
 import { ShelloTema } from '../styles/tema';
 import { useShello } from '../contexts/ShelloContext';
 import { MemoriaIA, NivelFormalidade } from '../types';
+import api from '../services/api';
 
 // ─── Memórias mockadas exibidas quando o contexto está vazio ────────────────
 
@@ -193,16 +194,26 @@ export default function TelaPerfil() {
     setNivelFormalidade,
     sair,
     dadosOnboarding,
+    definirUsuario,
   } = useShello();
 
-  // Estado local para o campo de nome de referência editável
   const [nomeReferencia, setNomeReferencia] = useState(
     dadosOnboarding?.nome.split(' ')[0] ?? nomeUsuario.split(' ')[0] ?? ''
   );
   const [salvandoNome, setSalvandoNome] = useState(false);
+  const [emailReal, setEmailReal] = useState('');
+  const [nomeReal, setNomeReal] = useState('');
 
-  // Usa memórias reais se existirem, caso contrário exibe os mocks
-  const listaMemorias = memorias.length > 0 ? memorias : MEMORIAS_MOCK;
+  useEffect(() => {
+    api.get('/api/users/me')
+      .then((res) => {
+        setEmailReal(res.data.email ?? '');
+        setNomeReal(res.data.nome ?? '');
+      })
+      .catch(() => {});
+  }, []);
+
+  const listaMemorias = memorias;
 
   // Handler de remoção: chama a função do contexto com o id da memória
   const handleRemoverMemoria = useCallback(
@@ -218,18 +229,19 @@ export default function TelaPerfil() {
   );
 
   const handleSalvarNome = useCallback(async () => {
-    if (!nomeReferencia.trim()) return;
+    const nomeTrimado = nomeReferencia.trim();
+    if (!nomeTrimado) return;
     setSalvandoNome(true);
     try {
-      const api = (await import('../services/api')).default;
-      await api.put('/api/users/preferences', { nome_referencia: nomeReferencia.trim() });
-      Alert.alert('Salvo', `O Shello vai te chamar de "${nomeReferencia.trim()}" agora.`);
+      await api.put('/api/users/preferences', { nome_referencia: nomeTrimado });
+      definirUsuario(nomeTrimado, true);
+      Alert.alert('Salvo', `O Shello vai te chamar de "${nomeTrimado}" agora.`);
     } catch {
       Alert.alert('Erro', 'Não foi possível salvar. Tente novamente.');
     } finally {
       setSalvandoNome(false);
     }
-  }, [nomeReferencia]);
+  }, [nomeReferencia, definirUsuario]);
 
   const handleSair = useCallback(() => {
     Alert.alert(
@@ -252,9 +264,8 @@ export default function TelaPerfil() {
     );
   }, [sair]);
 
-  // Obtém o primeiro nome do usuário para exibição
-  const primeiroNome = nomeUsuario.split(' ')[0] || 'Usuário';
-  const emailMock = 'usuario@email.com';
+  const primeiroNome = nomeReal.split(' ')[0] || nomeUsuario.split(' ')[0] || 'Usuário';
+  const emailExibido = emailReal || '…';
 
   return (
     <SafeAreaView style={estilos.areaSegura}>
@@ -384,13 +395,22 @@ export default function TelaPerfil() {
           </View>
 
           {/* Lista de cards de memória */}
-          {listaMemorias.map((memoria) => (
-            <CardMemoria
-              key={memoria.id}
-              memoria={memoria}
-              aoRemover={handleRemoverMemoria}
-            />
-          ))}
+          {listaMemorias.length === 0 ? (
+            <View style={estilos.estadoVazioMemorias}>
+              <Feather name="inbox" size={32} color={ShelloTema.cores.marcaClaro} />
+              <Text style={estilos.estadoVazioMemoriasTexto}>
+                Nenhuma memória ainda. O Shello aprende sobre você conforme vocês conversam.
+              </Text>
+            </View>
+          ) : (
+            listaMemorias.map((memoria) => (
+              <CardMemoria
+                key={memoria.id}
+                memoria={memoria}
+                aoRemover={handleRemoverMemoria}
+              />
+            ))
+          )}
 
           {/* Nota explicativa sobre as memórias */}
           <View style={estilos.notaRodape}>
@@ -431,7 +451,7 @@ export default function TelaPerfil() {
             </View>
             <View style={estilos.textoInfoConta}>
               <Text style={estilos.labelInfoConta}>E-mail</Text>
-              <Text style={estilos.valorInfoConta}>{emailMock}</Text>
+              <Text style={estilos.valorInfoConta}>{emailExibido}</Text>
             </View>
           </View>
 
@@ -652,6 +672,18 @@ const estilos = StyleSheet.create({
     backgroundColor: ShelloTema.cores.marcaClaro,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  estadoVazioMemorias: {
+    alignItems: 'center',
+    paddingVertical: ShelloTema.espacamento.xl,
+    gap: ShelloTema.espacamento.sm,
+  },
+  estadoVazioMemoriasTexto: {
+    fontSize: 13,
+    color: ShelloTema.cores.textoS,
+    textAlign: 'center',
+    lineHeight: 19,
+    maxWidth: 260,
   },
   notaRodape: {
     flexDirection: 'row',

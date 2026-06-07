@@ -139,6 +139,7 @@ export function ShelloProvider({ children }: { children: ReactNode }) {
         const prefs = prefsRes.value.data;
         if (prefs?.formalidade) setNivelFormalidade(prefs.formalidade as NivelFormalidade);
         if (prefs?.nome_referencia) {
+          setNomeUsuario(prefs.nome_referencia);
           setDadosOnboarding((prev) => prev ? { ...prev, nome: prefs.nome_referencia } : prev);
         }
       }
@@ -152,16 +153,33 @@ export function ShelloProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // Warm up Railway dyno before user hits login
+    api.get('/health').catch(() => {});
     carregarDados();
   }, [carregarDados]);
 
   // ── Diário ─────────────────────────────────────────────────────────────────
 
-  const adicionarEntrada = useCallback(async (titulo: string, conteudo: string): Promise<EntradaDiario> => {
-    const { data } = await api.post('/api/diary', { content: conteudo });
-    const nova = mapDiaryEntry(data);
-    setEntradas((ant) => [nova, ...ant]);
-    return nova;
+  const adicionarEntrada = useCallback(async (_titulo: string, conteudo: string): Promise<EntradaDiario> => {
+    const tempId = `temp-${Date.now()}`;
+    const tempEntrada: EntradaDiario = {
+      id: tempId,
+      titulo: conteudo.slice(0, 40) + (conteudo.length > 40 ? '...' : ''),
+      conteudo,
+      dataCriacao: new Date().toISOString(),
+      adicionadaAoContexto: false,
+    };
+    setEntradas((ant) => [tempEntrada, ...ant]);
+
+    try {
+      const { data } = await api.post('/api/diary', { content: conteudo });
+      const nova = mapDiaryEntry(data);
+      setEntradas((ant) => ant.map((e) => (e.id === tempId ? nova : e)));
+      return nova;
+    } catch (err) {
+      setEntradas((ant) => ant.filter((e) => e.id !== tempId));
+      throw err;
+    }
   }, []);
 
   const atualizarEntrada = useCallback(async (id: string, _titulo: string, conteudo: string): Promise<void> => {
@@ -185,21 +203,46 @@ export function ShelloProvider({ children }: { children: ReactNode }) {
   // ── Tarefas ────────────────────────────────────────────────────────────────
 
   const adicionarTarefa = useCallback(async (titulo: string, descricao?: string, data?: string): Promise<Tarefa> => {
-    const payload: Record<string, unknown> = { title: titulo };
-    if (descricao) payload.description = descricao;
-    if (data) payload.due_date = data;
-    const { data: res } = await api.post('/api/tasks', payload);
-    const nova = mapTask(res);
-    setTarefas((ant) => [...ant, nova]);
-    return nova;
+    const tempId = `temp-${Date.now()}`;
+    const tempTarefa: Tarefa = {
+      id: tempId,
+      titulo,
+      descricao,
+      concluida: false,
+      data,
+      dataCriacao: new Date().toISOString(),
+    };
+    setTarefas((ant) => [...ant, tempTarefa]);
+
+    try {
+      const payload: Record<string, unknown> = { title: titulo };
+      if (descricao) payload.description = descricao;
+      if (data) payload.due_date = data;
+      const { data: res } = await api.post('/api/tasks', payload);
+      const nova = mapTask(res);
+      setTarefas((ant) => ant.map((t) => (t.id === tempId ? nova : t)));
+      return nova;
+    } catch (err) {
+      setTarefas((ant) => ant.filter((t) => t.id !== tempId));
+      throw err;
+    }
   }, []);
 
   const alternarTarefa = useCallback(async (id: string): Promise<void> => {
     const tarefa = tarefas.find((t) => t.id === id);
     const novoStatus = tarefa?.concluida ? 'pending' : 'done';
-    const { data } = await api.patch(`/api/tasks/${id}`, { status: novoStatus });
-    const atualizada = mapTask(data);
-    setTarefas((ant) => ant.map((t) => (t.id === id ? atualizada : t)));
+
+    // Optimistic toggle
+    setTarefas((ant) => ant.map((t) => (t.id === id ? { ...t, concluida: !t.concluida } : t)));
+
+    try {
+      const { data } = await api.patch(`/api/tasks/${id}`, { status: novoStatus });
+      const atualizada = mapTask(data);
+      setTarefas((ant) => ant.map((t) => (t.id === id ? atualizada : t)));
+    } catch {
+      // Revert on failure
+      setTarefas((ant) => ant.map((t) => (t.id === id ? { ...t, concluida: tarefa?.concluida ?? false } : t)));
+    }
   }, [tarefas]);
 
   // ── Rotinas ────────────────────────────────────────────────────────────────
