@@ -120,8 +120,11 @@ export default function TelaEntradaDiario({ route, navigation }: Props): React.J
       setModalContexto(true);
       if (timerModal.current) clearTimeout(timerModal.current);
       timerModal.current = setTimeout(() => setModalContexto(false), 2500);
-    } catch (e) {
-      console.error('Erro ao adicionar contexto:', e);
+    } catch (e: any) {
+      console.error(
+        'Erro ao adicionar contexto:',
+        JSON.stringify(e?.response?.data ?? e, null, 2)
+      );
     } finally {
       setAdicionandoContexto(false);
     }

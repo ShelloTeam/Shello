@@ -80,7 +80,6 @@ class ContextFragmentRepository:
                 "content": content,
                 "category": category,
                 "is_active": True,
-                "derived_from_diary_id": None,
                 "derived_from_conversation_id": derived_from_conversation_id or None,
             }
 
@@ -93,7 +92,7 @@ class ContextFragmentRepository:
             )
             return result.data[0]
         except Exception:
-            logger.error("Erro ao criar fragmento")
+            logger.error("Erro ao criar fragmento") 
             raise
 
     def patch_active(self, fragment_id: str, user_id: str, is_active: bool) -> dict | None:
