@@ -137,7 +137,24 @@ export default function TelaAutenticacao({ navigation }: TelaAutenticacaoProps) 
       }
     } catch (err: any) {
       const detail = err?.response?.data?.detail;
-      setErroMensagem(detail ?? 'Ocorreu um erro. Tente novamente.');
+
+      let mensagem = 'Ocorreu um erro. Tente novamente.';
+
+      if (typeof detail === 'string') {
+        mensagem = detail;
+      } else if (Array.isArray(detail) && detail.length > 0) {
+        const erro = detail[0];
+
+        if (erro.loc?.includes('email')) {
+          mensagem = 'Digite um e-mail válido.';
+        } else if (erro.loc?.includes('password') || erro.loc?.includes('senha')) {
+          mensagem = 'Senha inválida.';
+        } else {
+          mensagem = erro.msg ?? mensagem;
+        }
+      }
+
+      setErroMensagem(mensagem);
     } finally {
       setCarregando(false);
     }
