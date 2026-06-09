@@ -37,12 +37,17 @@ const COR_ROTINA_NOITE = '#E8E4F0';    // lavanda suave para rotina noite
 
 // ─── Utilitário: verifica se uma tarefa está atrasada ─────────────────────────
 
+function parseDateLocal(iso: string): Date {
+  // "2026-06-09" → new Date(2026, 5, 9) — evita conversão UTC→local que adianta 1 dia em UTC-3
+  const [year, month, day] = iso.split('T')[0].split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
 function estaAtrasada(tarefa: Tarefa): boolean {
   if (!tarefa.data || tarefa.concluida) return false;
-  const vencimento = new Date(tarefa.data);
+  const vencimento = parseDateLocal(tarefa.data);
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
-  vencimento.setHours(0, 0, 0, 0);
   return vencimento < hoje;
 }
 
@@ -50,7 +55,7 @@ function estaAtrasada(tarefa: Tarefa): boolean {
 
 function formatarData(iso: string): string {
   try {
-    return new Date(iso).toLocaleDateString('pt-BR', {
+    return parseDateLocal(iso).toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: 'short',
     });

@@ -210,7 +210,7 @@ export default function TelaPerfil() {
     sair,
     dadosOnboarding,
     definirUsuario,
-    recarregarDados,
+    recarregarMemorias,
   } = useShello();
 
   const [nomeReferencia, setNomeReferencia] = useState(
@@ -268,14 +268,14 @@ export default function TelaPerfil() {
       });
 
       definirUsuario(nomeTrimado, true);
-      await recarregarDados();
+      await recarregarMemorias();
       Alert.alert('Salvo', `O Shello vai te chamar de "${nomeTrimado}" agora.`);
     } catch {
       Alert.alert('Erro', 'Não foi possível salvar. Tente novamente.');
     } finally {
       setSalvandoNome(false);
     }
-  }, [nomeReferencia, definirUsuario, memorias, recarregarDados]);
+  }, [nomeReferencia, definirUsuario, memorias, recarregarMemorias]);
 
   const handleSair = useCallback(() => {
     Alert.alert(

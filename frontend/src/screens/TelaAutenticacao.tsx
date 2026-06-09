@@ -120,7 +120,6 @@ export default function TelaAutenticacao({ navigation }: TelaAutenticacaoProps) 
         const user = await login(camposLogin.email, camposLogin.senha);
         definirUsuario(user.nome, false);
         await recarregarDados();
-        definirUsuario(user.nome, true);
 
       } else if (formularioAtivo === 'cadastro') {
         if (camposCadastro.senha !== camposCadastro.confirmarSenha) {

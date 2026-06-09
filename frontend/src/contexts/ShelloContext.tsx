@@ -46,6 +46,7 @@ interface ShelloContextData {
 
   setNivelFormalidade: (nivel: NivelFormalidade) => void;
   recarregarDados: () => Promise<void>;
+  recarregarMemorias: () => Promise<void>;
   definirUsuario: (nome: string, onboardingOk: boolean) => void;
 }
 
@@ -130,7 +131,6 @@ export function ShelloProvider({ children }: { children: ReactNode }) {
         setCarregando(false);
         return;
       }
-      setNomeUsuario(user.nome);
 
       const [entradasRes, tarefasRes, rotinasRes, memoriasRes, prefsRes] = await Promise.allSettled([
         api.get('/api/diary'),
@@ -153,13 +153,16 @@ export function ShelloProvider({ children }: { children: ReactNode }) {
       if (memoriasRes.status === 'fulfilled') {
         setMemorias((memoriasRes.value.data ?? []).map(mapMemoria));
       }
+
+      // Define nome uma única vez — preferência > nome de cadastro (evita flicker)
       if (prefsRes.status === 'fulfilled') {
         const prefs = prefsRes.value.data;
         if (prefs?.formalidade) setNivelFormalidade(prefs.formalidade as NivelFormalidade);
-        if (prefs?.nome_referencia) {
-          setNomeUsuario(prefs.nome_referencia);
-          setDadosOnboarding((prev) => prev ? { ...prev, nome: prefs.nome_referencia } : prev);
-        }
+        const nomeDefinitivo = prefs?.nome_referencia || user.nome;
+        setNomeUsuario(nomeDefinitivo);
+        setDadosOnboarding((prev) => prev ? { ...prev, nome: nomeDefinitivo } : prev);
+      } else {
+        setNomeUsuario(user.nome);
       }
 
       setOnboardingConcluido(true);
@@ -325,6 +328,11 @@ export function ShelloProvider({ children }: { children: ReactNode }) {
     setMemorias((ant) => ant.filter((m) => m.id !== id));
   }, []);
 
+  const recarregarMemorias = useCallback(async (): Promise<void> => {
+    const { data } = await api.get('/api/memories');
+    setMemorias((data ?? []).map(mapMemoria));
+  }, []);
+
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   const definirUsuario = useCallback((nome: string, onboardingOk: boolean) => {
@@ -355,6 +363,7 @@ export function ShelloProvider({ children }: { children: ReactNode }) {
     removerMemoria,
     setNivelFormalidade,
     recarregarDados: carregarDados,
+    recarregarMemorias,
     definirUsuario,
   };
 

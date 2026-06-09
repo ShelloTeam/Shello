@@ -44,6 +44,39 @@ function formatarDataPtBR(): string {
   return diaFormatado.charAt(0).toUpperCase() + diaFormatado.slice(1);
 }
 
+// ─── Streak: dias consecutivos com entrada no diário ─────────────────────────
+
+function localDateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function calcularDiasSequencia(entradas: { dataCriacao: string }[]): number {
+  if (entradas.length === 0) return 0;
+
+  const diasComEntrada = new Set(
+    entradas.map((e) => localDateKey(new Date(e.dataCriacao)))
+  );
+
+  const hoje = new Date();
+  const hojeKey = localDateKey(hoje);
+  const ontemKey = localDateKey(new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - 1));
+
+  // Streak começa hoje se já tem entrada, senão começa ontem (ainda no prazo)
+  const inicio = diasComEntrada.has(hojeKey) ? 0 : 1;
+  if (inicio === 1 && !diasComEntrada.has(ontemKey)) return 0;
+
+  let streak = 0;
+  for (let i = inicio; i < 365; i++) {
+    const dia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - i);
+    if (diasComEntrada.has(localDateKey(dia))) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
 // ─── Saudação baseada no horário ──────────────────────────────────────────────
 
 function obterSaudacao(): string {
@@ -66,6 +99,7 @@ export default function HomeScreen() {
   const saudacao = obterSaudacao();
   const nome = nomeUsuario || 'Amigo';
   const totalEntradas = entradas.length;
+  const diasSequencia = calcularDiasSequencia(entradas);
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
@@ -122,7 +156,7 @@ export default function HomeScreen() {
         {/* ── Badges pill lado a lado ── */}
         <View style={estilos.filhaBadges}>
           <View style={[estilos.badge, estilos.badgeVerde]}>
-            <Text style={estilos.textoBadgeVerde}>🔥 7 dias seguidos</Text>
+            <Text style={estilos.textoBadgeVerde}>🔥 {diasSequencia} {diasSequencia === 1 ? 'dia seguido' : 'dias seguidos'}</Text>
           </View>
           <View style={[estilos.badge, estilos.badgeTerracota]}>
             <Text style={estilos.textoBadgeTerracota}>
