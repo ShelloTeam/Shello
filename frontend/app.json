@@ -1,12 +1,19 @@
 {
   "expo": {
+    "name": "Shello",
+    "slug": "shello",
+    "icon": "./assets/logoshello.jpeg",
+    "android": {
+      "package": "com.eduardosouza1.shello",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/logoshello.jpeg",
+        "backgroundColor": "#F5F0EB"
+      }
+    },
     "extra": {
       "eas": {
         "projectId": "bac0ff8d-1d09-4c0b-9167-ef633e12a032"
       }
-    },
-    "android": {
-      "package": "com.eduardosouza1.shello"
     }
   }
 }
