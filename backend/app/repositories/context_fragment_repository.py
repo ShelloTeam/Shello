@@ -20,7 +20,7 @@ class ContextFragmentRepository:
         try:
             result = (
                 self._client.table("context_fragments")
-                .select("id, user_id, content, category, is_active, derived_from_conversation_id, created_at")
+                .select("id, user_id, content, category, is_active, created_at")
                 .eq("user_id", user_id)
                 .eq("is_active", True)
                 .order("created_at", desc=True)
@@ -51,7 +51,7 @@ class ContextFragmentRepository:
         try:
             result = (
                 self._client.table("context_fragments")
-                .select("id, user_id, content, category, is_active, derived_from_conversation_id, created_at")
+                .select("id, user_id, content, category, is_active, created_at")
                 .eq("id", fragment_id)
                 .eq("user_id", user_id)
                 .limit(1)
@@ -62,25 +62,14 @@ class ContextFragmentRepository:
             logger.error("Erro ao buscar fragmento: fragment_id=%s", fragment_id)
             raise
 
-    def create(
-        self,
-        user_id: str,
-        content: str,
-        category: str,
-        derived_from_conversation_id: str | None,
-    ) -> dict:
-        """
-        Insere fragmento. user_id sempre vem do JWT.
-        derived_from_conversation_id é NULL quando criado manualmente —
-        persiste como NULL se a conversa for deletada (ON DELETE SET NULL).
-        """
+    def create(self, user_id: str, content: str, category: str) -> dict:
+        """Insere fragmento. user_id sempre vem do JWT."""
         try:
             payload = {
                 "user_id": user_id,
                 "content": content,
                 "category": category,
                 "is_active": True,
-                "derived_from_conversation_id": derived_from_conversation_id or None,
             }
 
             result = self._client.table("context_fragments").insert(payload).execute()
@@ -92,7 +81,7 @@ class ContextFragmentRepository:
             )
             return result.data[0]
         except Exception:
-            logger.error("Erro ao criar fragmento") 
+            logger.error("Erro ao criar fragmento")
             raise
 
     def patch_active(self, fragment_id: str, user_id: str, is_active: bool) -> dict | None:

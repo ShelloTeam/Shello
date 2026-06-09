@@ -34,7 +34,6 @@ class ContextFragmentService:
             user_id=user_id,
             content=data.content,
             category=data.category,
-            derived_from_conversation_id=data.derived_from_conversation_id,
         )
 
     def patch_fragment(self, fragment_id: str, user_id: str, data: ContextFragmentPatch) -> dict:

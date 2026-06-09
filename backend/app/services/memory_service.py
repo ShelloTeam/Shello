@@ -22,7 +22,6 @@ class MemoryService:
             user_id=user_id,
             content=content,
             category=tipo,
-            derived_from_conversation_id=None,
         )
         return Memory.from_fragment(row)
 
