@@ -86,7 +86,7 @@ function mapRotina(r: any): Rotina {
 function mapMemoria(m: any): MemoriaIA {
   return {
     id: m.id,
-    tipo: m.tipo as MemoriaIA['tipo'],
+    tipo: (m.tipo as string).toUpperCase() as MemoriaIA['tipo'],
     conteudo: m.conteudo,
     dataCriacao: m.created_at,
   };

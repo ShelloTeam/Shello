@@ -257,11 +257,15 @@ export default function TelaChat(): React.JSX.Element {
         };
         setMensagens((ant) => [msgIA, ...ant]);
       } catch (err: any) {
-        const detalhe = err?.response?.data?.detail ?? err?.message ?? 'erro desconhecido';
+        const status = err?.response?.status;
+        const detalhe = err?.response?.data?.detail ?? '';
+        const isLimite = status === 400 && detalhe.includes('20');
         const msgErro: MensagemChat = {
           id: gerarId(),
           remetente: 'ia',
-          conteudo: `Não consegui me conectar agora. [DEBUG: ${detalhe}]`,
+          conteudo: isLimite
+            ? 'Chegamos ao limite de 20 mensagens desta conversa. Inicie uma nova conversa para continuar. 🐢'
+            : 'Não consegui me conectar agora. Tente novamente em instantes. 🐢',
           horario: horaAtual(),
           expressao: 'duvidoso',
         };
