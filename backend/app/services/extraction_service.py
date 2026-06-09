@@ -74,7 +74,6 @@ class ExtractionService:
                     content=fragment["content"],
                     category=fragment.get("category", "contexto"),
                     is_active=False,
-                    derived_from_diary_id=entry_id,
                 )
 
         return fragments

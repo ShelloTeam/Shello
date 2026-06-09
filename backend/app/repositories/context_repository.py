@@ -20,14 +20,12 @@ class ContextRepository:
         )
         return result.data or []
 
-    async def save(self, user_id: str, content: str, category: str, is_active: bool = False, derived_from_diary_id: str | None = None) -> None:
+    async def save(self, user_id: str, content: str, category: str, is_active: bool = False) -> None:
         self.db.table("context_fragments").insert({
             "user_id": user_id,
             "content": content,
             "category": category,
             "is_active": is_active,
-            "derived_from_diary_id": derived_from_diary_id,
-            "derived_from_conversation_id": None,
         }).execute()
 
     async def delete(self, fragment_id: str) -> None:
