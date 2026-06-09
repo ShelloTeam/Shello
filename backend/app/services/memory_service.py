@@ -2,7 +2,7 @@ from __future__ import annotations
 from app.models.memory_models import Memory
 from app.repositories.context_fragment_repository import ContextFragmentRepository
 
-MEMORY_CATEGORIES = {"PREFERENCIA", "FATO", "OBJETIVO"}
+MEMORY_CATEGORIES = {"preferencia", "fato", "objetivo", "habito", "contexto", "relacionamento"}
 
 
 class MemoryService:
@@ -14,14 +14,13 @@ class MemoryService:
         return [
             Memory.from_fragment(row)
             for row in rows
-            if row.get("category") in MEMORY_CATEGORIES
         ]
 
     async def create(self, user_id: str, content: str, tipo: str) -> Memory:
         row = self.repository.create(
             user_id=user_id,
             content=content,
-            category=tipo,
+            category=tipo.lower(),
         )
         return Memory.from_fragment(row)
 
