@@ -25,11 +25,14 @@ async def create_memory(
     current_user: User = Depends(get_current_user),
     service: MemoryService = Depends(get_memory_service),
 ):
-    return await service.create(
-        user_id=current_user.id,
-        content=body.conteudo,
-        tipo=body.tipo,
-    )
+    try:
+        return await service.create(
+            user_id=current_user.id,
+            content=body.conteudo,
+            tipo=body.tipo,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.delete("/{memory_id}", status_code=204, summary="Deletar memória")

@@ -80,8 +80,8 @@ class ContextFragmentRepository:
                 result.data[0]["id"], user_id,
             )
             return result.data[0]
-        except Exception:
-            logger.error("Erro ao criar fragmento")
+        except Exception as exc:
+            logger.error("Erro ao criar fragmento: %s", exc, exc_info=True)
             raise
 
     def patch_active(self, fragment_id: str, user_id: str, is_active: bool) -> dict | None:
