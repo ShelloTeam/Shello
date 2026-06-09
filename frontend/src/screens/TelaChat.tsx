@@ -267,7 +267,7 @@ export default function TelaChat(): React.JSX.Element {
         setPensando(false);
       }
     },
-    [pensando, atingiuLimite, conversationId]
+    [pensando, conversationId]
   );
 
   // ── Confirmar tarefa sugerida ────────────────────────────────────────────
@@ -386,33 +386,26 @@ export default function TelaChat(): React.JSX.Element {
         {/* ── Barra de entrada ─────────────────────────────────────────── */}
         <View style={estilos.barraEntrada}>
           <TextInput
-            style={[estilos.input, atingiuLimite && estilos.inputDesabilitado]}
+            style={estilos.input}
             value={inputTexto}
             onChangeText={setInputTexto}
-            placeholder={atingiuLimite ? 'Inicie um novo chat para continuar...' : 'Compartilhe seus pensamentos...'}
+            placeholder="Compartilhe seus pensamentos..."
             placeholderTextColor={ShelloTema.cores.textoS}
             multiline
             maxLength={500}
-            editable={!atingiuLimite}
             returnKeyType="default"
           />
-          {atingiuLimite ? (
-            <TouchableOpacity style={estilos.botaoNovoChat2} onPress={iniciarNovoChat} activeOpacity={0.8}>
-              <Feather name="refresh-cw" size={18} color={ShelloTema.cores.superficie} />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[
-                estilos.botaoEnviar,
-                (!inputTexto.trim() || pensando) && estilos.botaoEnviarDesabilitado,
-              ]}
-              onPress={() => enviarMensagem(inputTexto)}
-              activeOpacity={0.8}
-              disabled={!inputTexto.trim() || pensando}
-            >
-              <Feather name="send" size={20} color={ShelloTema.cores.superficie} />
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            style={[
+              estilos.botaoEnviar,
+              (!inputTexto.trim() || pensando) && estilos.botaoEnviarDesabilitado,
+            ]}
+            onPress={() => enviarMensagem(inputTexto)}
+            activeOpacity={0.8}
+            disabled={!inputTexto.trim() || pensando}
+          >
+            <Feather name="send" size={20} color={ShelloTema.cores.superficie} />
+          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
