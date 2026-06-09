@@ -256,11 +256,12 @@ export default function TelaChat(): React.JSX.Element {
           expressao,
         };
         setMensagens((ant) => [msgIA, ...ant]);
-      } catch {
+      } catch (err: any) {
+        const detalhe = err?.response?.data?.detail ?? err?.message ?? 'erro desconhecido';
         const msgErro: MensagemChat = {
           id: gerarId(),
           remetente: 'ia',
-          conteudo: 'Não consegui me conectar agora. Tente novamente em instantes. 🐢',
+          conteudo: `Não consegui me conectar agora. [DEBUG: ${detalhe}]`,
           horario: horaAtual(),
           expressao: 'duvidoso',
         };
