@@ -55,18 +55,33 @@ interface ConfiguracaoTipoMemoria {
 const CONFIGURACAO_TIPO: Record<MemoriaIA['tipo'], ConfiguracaoTipoMemoria> = {
   PREFERENCIA: {
     rotulo: 'PREFERÊNCIA',
-    fundoBadge: '#D6E2D8',   // verde sálvia claro
-    textoBadge: '#5E836A',   // verde sálvia
+    fundoBadge: '#D6E2D8',
+    textoBadge: '#5E836A',
   },
   FATO: {
     rotulo: 'FATO',
-    fundoBadge: '#EADCD6',   // terracota
-    textoBadge: '#8B5E3C',   // marrom terracota
+    fundoBadge: '#EADCD6',
+    textoBadge: '#8B5E3C',
   },
   OBJETIVO: {
     rotulo: 'OBJETIVO',
-    fundoBadge: '#D1E8F0',   // azul suave
-    textoBadge: '#1565C0',   // azul
+    fundoBadge: '#D1E8F0',
+    textoBadge: '#1565C0',
+  },
+  HABITO: {
+    rotulo: 'HÁBITO',
+    fundoBadge: '#F0EAD6',
+    textoBadge: '#7B6B3A',
+  },
+  CONTEXTO: {
+    rotulo: 'CONTEXTO',
+    fundoBadge: '#E8D6F0',
+    textoBadge: '#6B3A7B',
+  },
+  RELACIONAMENTO: {
+    rotulo: 'RELAÇÃO',
+    fundoBadge: '#F0D6D6',
+    textoBadge: '#7B3A3A',
   },
 };
 
@@ -88,7 +103,7 @@ interface CardMemoriaProps {
 
 function CardMemoria({ memoria, aoRemover }: CardMemoriaProps) {
   const opacidade = useRef(new Animated.Value(1)).current;
-  const config = CONFIGURACAO_TIPO[memoria.tipo];
+  const config = CONFIGURACAO_TIPO[memoria.tipo] ?? { rotulo: memoria.tipo, fundoBadge: '#E8E8E8', textoBadge: '#555555' };
   // Memórias mockadas não podem ser removidas — guard no filho evita
   // que a animação de fade-out rode antes do pai bloquear a ação.
   const ehMock = memoria.id.startsWith('mock-');
@@ -195,6 +210,7 @@ export default function TelaPerfil() {
     sair,
     dadosOnboarding,
     definirUsuario,
+    recarregarDados,
   } = useShello();
 
   const [nomeReferencia, setNomeReferencia] = useState(
@@ -238,14 +254,28 @@ export default function TelaPerfil() {
     setSalvandoNome(true);
     try {
       await api.put('/api/users/preferences', { nome_referencia: nomeTrimado });
+
+      // Remove memória antiga de nome e cria nova com o nome atualizado
+      const memoriaNomeAntiga = memorias.find(
+        (m) => m.tipo === 'PREFERENCIA' && m.conteudo.toLowerCase().includes('ser chamado')
+      );
+      if (memoriaNomeAntiga) {
+        await api.delete(`/api/memories/${memoriaNomeAntiga.id}`);
+      }
+      await api.post('/api/memories', {
+        conteudo: `Prefere ser chamado de ${nomeTrimado}`,
+        tipo: 'PREFERENCIA',
+      });
+
       definirUsuario(nomeTrimado, true);
+      await recarregarDados();
       Alert.alert('Salvo', `O Shello vai te chamar de "${nomeTrimado}" agora.`);
     } catch {
       Alert.alert('Erro', 'Não foi possível salvar. Tente novamente.');
     } finally {
       setSalvandoNome(false);
     }
-  }, [nomeReferencia, definirUsuario]);
+  }, [nomeReferencia, definirUsuario, memorias, recarregarDados]);
 
   const handleSair = useCallback(() => {
     Alert.alert(

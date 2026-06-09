@@ -6,7 +6,7 @@ from app.core.llm.exceptions import LLMProviderError
 from app.core.mode_detector import detect_mode
 from app.core.prompt_builder import PromptBuilder
 
-MESSAGE_LIMIT = 20
+MESSAGE_LIMIT = 200
 
 
 class ChatService:

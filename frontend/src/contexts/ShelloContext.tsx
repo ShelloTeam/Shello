@@ -92,6 +92,24 @@ function mapMemoria(m: any): MemoriaIA {
   };
 }
 
+function classificarTipoMemoria(conteudo: string): MemoriaIA['tipo'] {
+  const t = conteudo.toLowerCase();
+  if (/amigo|namorad|família|familiar|colega|conhec|encontr[ei]|pessoa|pai|mãe|irmão|irmã|filho|filha/.test(t))
+    return 'RELACIONAMENTO';
+  if (/quer[oe]|desej|objetivo|meta|plan[eo]|pretend|vontade|sonho|quero melhorar|quero aprender/.test(t))
+    return 'OBJETIVO';
+  if (/sempre|todo dia|rotina|hábito|costumo|geralmente|frequen|regularmente|diariamente/.test(t))
+    return 'HABITO';
+  if (/prefer|gost[ao]|amo |adoro|não gost|detesto|favorit/.test(t))
+    return 'PREFERENCIA';
+  return 'FATO';
+}
+
+function conteudoSimilar(a: string, b: string): boolean {
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-záàâãéêíóôõúç]/g, ' ').replace(/\s+/g, ' ').trim();
+  return norm(a).slice(0, 60) === norm(b).slice(0, 60);
+}
+
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 export function ShelloProvider({ children }: { children: ReactNode }) {
@@ -189,16 +207,25 @@ export function ShelloProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const marcarEntradaComoContexto = useCallback(async (id: string, conteudo: string): Promise<void> => {
-    await api.post('/api/memories', {
-      conteudo: `Reflexão do diário: ${conteudo.slice(0, 450)}`,
-      tipo: 'FATO',
-    });
+    const novoConteudo = `Reflexão do diário: ${conteudo.slice(0, 450)}`;
+
+    // Anti-duplicata: checa se conteúdo muito parecido já existe
+    const duplicata = memorias.some((m) => conteudoSimilar(m.conteudo, novoConteudo));
+    if (duplicata) {
+      setEntradas((ant) =>
+        ant.map((e) => (e.id === id ? { ...e, adicionadaAoContexto: true } : e))
+      );
+      return;
+    }
+
+    const tipo = classificarTipoMemoria(conteudo);
+    await api.post('/api/memories', { conteudo: novoConteudo, tipo });
     const { data } = await api.get('/api/memories');
     setMemorias((data ?? []).map(mapMemoria));
     setEntradas((ant) =>
       ant.map((e) => (e.id === id ? { ...e, adicionadaAoContexto: true } : e))
     );
-  }, []);
+  }, [memorias]);
 
   // ── Tarefas ────────────────────────────────────────────────────────────────
 

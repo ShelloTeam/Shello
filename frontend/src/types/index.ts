@@ -31,7 +31,7 @@ export interface Rotina {
 /** Representa uma memória que a IA tem sobre o usuário */
 export interface MemoriaIA {
   id: string;
-  tipo: 'PREFERENCIA' | 'FATO' | 'OBJETIVO';
+  tipo: 'PREFERENCIA' | 'FATO' | 'OBJETIVO' | 'HABITO' | 'CONTEXTO' | 'RELACIONAMENTO';
   conteudo: string;
   dataCriacao: string;
 }

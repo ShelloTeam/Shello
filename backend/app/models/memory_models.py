@@ -5,7 +5,7 @@ from typing import Literal
 
 class MemoryCreate(BaseModel):
     conteudo: str = Field(..., min_length=1, max_length=500)
-    tipo: Literal["PREFERENCIA", "FATO", "OBJETIVO"]
+    tipo: Literal["PREFERENCIA", "FATO", "OBJETIVO", "HABITO", "CONTEXTO", "RELACIONAMENTO"]
 
 
 class Memory(BaseModel):

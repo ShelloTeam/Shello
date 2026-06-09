@@ -29,9 +29,6 @@ import { useShello } from '../contexts/ShelloContext';
 import { MensagemChat, ExpressaoShello } from '../types';
 import api from '../services/api';
 
-// ─── Constantes ───────────────────────────────────────────────────────────────
-const LIMITE_MENSAGENS = 20;
-
 // Sprite sheet: 4 quadros lado a lado (neutro, duvidoso, surpreso, feliz)
 const SPRITE_SHELLO = require('../../assets/shello-expressoes.jpeg');
 
@@ -200,10 +197,6 @@ export default function TelaChat(): React.JSX.Element {
 
   const flatListRef = useRef<FlatList<MensagemChat>>(null);
 
-  // Contagem apenas das mensagens do usuário (regra 4.1: limite por msg do usuário)
-  const totalMensagens = mensagens.filter((m) => m.remetente === 'usuario').length;
-  const atingiuLimite = totalMensagens >= LIMITE_MENSAGENS;
-
   // ── Mensagem de boas-vindas ──────────────────────────────────────────────
   useEffect(() => {
     const nome = nomeUsuario || 'amigo';
@@ -224,7 +217,7 @@ export default function TelaChat(): React.JSX.Element {
   const enviarMensagem = useCallback(
     async (texto: string) => {
       const txt = texto.trim();
-      if (!txt || pensando || atingiuLimite) return;
+      if (!txt || pensando) return;
 
       const msgUsuario: MensagemChat = {
         id: gerarId(),
@@ -259,12 +252,12 @@ export default function TelaChat(): React.JSX.Element {
       } catch (err: any) {
         const status = err?.response?.status;
         const detalhe = err?.response?.data?.detail ?? '';
-        const isLimite = status === 400 && detalhe.includes('20');
+        const isLimite = status === 400 && detalhe.toLowerCase().includes('limite');
         const msgErro: MensagemChat = {
           id: gerarId(),
           remetente: 'ia',
           conteudo: isLimite
-            ? 'Chegamos ao limite de 20 mensagens desta conversa. Inicie uma nova conversa para continuar. 🐢'
+            ? 'Atingimos o limite de mensagens desta conversa. Inicie uma nova conversa para continuar. 🐢'
             : 'Não consegui me conectar agora. Tente novamente em instantes. 🐢',
           horario: horaAtual(),
           expressao: 'duvidoso',
@@ -333,26 +326,7 @@ export default function TelaChat(): React.JSX.Element {
             <Text style={estilos.cabecalhoNome}>Shello</Text>
             <Text style={estilos.cabecalhoSubtitulo}>Seu Companheiro de IA</Text>
           </View>
-          {/* Contador de mensagens */}
-          <View style={estilos.contadorWrapper}>
-            <Text style={[estilos.contadorTexto, atingiuLimite && estilos.contadorTextoAlerta]}>
-              {totalMensagens}/{LIMITE_MENSAGENS}
-            </Text>
-          </View>
         </View>
-
-        {/* ── Banner de limite atingido ──────────────────────────────────── */}
-        {atingiuLimite && (
-          <View style={estilos.bannerLimite}>
-            <Feather name="alert-circle" size={16} color="#8B5E3C" />
-            <Text style={estilos.bannerLimiteTexto}>
-              {'  '}Você atingiu o limite desta conversa.
-            </Text>
-            <TouchableOpacity style={estilos.botaoNovoChat} onPress={iniciarNovoChat} activeOpacity={0.8}>
-              <Text style={estilos.botaoNovoChatTexto}>Novo Chat</Text>
-            </TouchableOpacity>
-          </View>
-        )}
 
         {/* ── Sugestões rápidas ─────────────────────────────────────────── */}
         {mostrarSugestoes && (
