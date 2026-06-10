@@ -298,7 +298,7 @@ export default function TelaAutenticacao({ navigation }: TelaAutenticacaoProps) 
       <Text style={estilos.subtituloFormulario}>Comece sua jornada de crescimento</Text>
 
       {renderInput(
-        'Como você quer ser chamado?',
+        'Qual seu nome?',
         camposCadastro.nome,
         (v) => setCamposCadastro((p) => ({ ...p, nome: v })),
         { icone: 'user', autoCapitalize: 'words' }
