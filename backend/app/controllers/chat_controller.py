@@ -1,3 +1,4 @@
+import re
 from fastapi import APIRouter, Depends, HTTPException
 from app.models.chat_models import ChatRequest, ChatResponse
 from app.services.chat_service import ChatService
@@ -10,6 +11,15 @@ from app.core.llm.exceptions import LLMProviderError
 from app.core.config import settings
 
 router = APIRouter(prefix="/api/chat", tags=["Chat"])
+
+def strip_markdown(text: str) -> str:
+    text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)  # **negrito**
+    text = re.sub(r'\*(.*?)\*', r'\1', text)        # *itálico*
+    text = re.sub(r'__(.*?)__', r'\1', text)        # __negrito__
+    text = re.sub(r'_(.*?)_', r'\1', text)          # _itálico_
+    text = re.sub(r'`(.*?)`', r'\1', text)          # `código`
+    text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)  # # títulos
+    return text.strip()
 
 
 def get_chat_service(db=Depends(get_supabase)) -> ChatService:
@@ -81,6 +91,11 @@ async def send_message(
             formalidade=formalidade,
             onboarding=onboarding,
         )
+
+        if hasattr(result, 'message') and result.message:
+            result.message = strip_markdown(result.message)
+
+        return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except LLMProviderError as e:
