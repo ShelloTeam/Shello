@@ -3,6 +3,8 @@
 // Regra 4.1: limite de 20 mensagens por conversa.
 // Regra 4.2: card de confirmação de tarefa sugerida pela IA.
 
+import Markdown from 'react-native-markdown-display';
+
 import React, {
   useState,
   useEffect,
@@ -28,6 +30,25 @@ import { ShelloTema } from '../styles/tema';
 import { useShello } from '../contexts/ShelloContext';
 import { MensagemChat, ExpressaoShello } from '../types';
 import api from '../services/api';
+
+const markdownEstilos = {
+  body: {
+    fontSize: 15,
+    color: ShelloTema.cores.textoP,
+    lineHeight: 22,
+  },
+  strong: {
+    fontWeight: '700' as const,
+    color: ShelloTema.cores.textoP,
+  },
+  em: {
+    fontStyle: 'italic' as const,
+  },
+  bullet_list: { marginVertical: 4 },
+  ordered_list: { marginVertical: 4 },
+  list_item: { marginVertical: 2 },
+  paragraph: { marginVertical: 0 },
+};
 
 // Sprite sheet: 4 quadros lado a lado (neutro, duvidoso, surpreso, feliz)
 const SPRITE_SHELLO = require('../../assets/shello-expressoes.jpeg');
@@ -131,7 +152,7 @@ function BalaoChatIA({ mensagem }: { mensagem: MensagemChat }): React.JSX.Elemen
       <AvatarShello expressao={expressao} tamanho={30} />
       <View style={estilos.balaoIAWrapper}>
         <View style={estilos.balaoIA}>
-          <Text style={estilos.balaoIATexto}>{mensagem.conteudo}</Text>
+          <Markdown style={markdownEstilos}>{mensagem.conteudo}</Markdown>
         </View>
         <Text style={estilos.horario}>{mensagem.horario}</Text>
       </View>
