@@ -200,6 +200,23 @@ interface ModalNovaTarefaProps {
   onAdicionar: (titulo: string, data?: string) => void;
 }
 
+const formatarDataInput = (texto: string) => {
+  // Remove tudo que não for número
+  const numeros = texto.replace(/\D/g, '');
+
+  let formatado = numeros;
+
+  if (numeros.length > 2) {
+    formatado = `${numeros.slice(0, 2)}/${numeros.slice(2)}`;
+  }
+
+  if (numeros.length > 4) {
+    formatado = `${numeros.slice(0, 2)}/${numeros.slice(2, 4)}/${numeros.slice(4, 8)}`;
+  }
+
+  return formatado;
+};
+
 function ModalNovaTarefa({
   visivel,
   onFechar,
@@ -210,15 +227,63 @@ function ModalNovaTarefa({
   const [erroData,  setErroData]  = useState('');
 
   // Converte dd/mm/aaaa → ISO 8601 (AAAA-MM-DD)
-  function parseDataBR(texto: string): string | undefined {
-    if (!texto.trim()) return undefined;
-    const partes = texto.split('/');
-    if (partes.length !== 3) return undefined;
-    const [dia, mes, ano] = partes;
-    const iso = `${ano.padStart(4, '0')}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return undefined;
-    return iso;
+  function validarDataBR(texto: string): {
+    dataISO?: string;
+    erro?: string;
+  } {
+    const match = texto.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+
+    if (!match) {
+      return { erro: 'Use o formato DD/MM/AAAA' };
+    }
+
+    const [, diaStr, mesStr, anoStr] = match;
+
+    const dia = Number(diaStr);
+    const mes = Number(mesStr);
+    const ano = Number(anoStr);
+
+    if (mes < 1 || mes > 12) {
+      return { erro: 'Mês inválido' };
+    }
+
+    if (dia < 1 || dia > 31) {
+      return { erro: 'Dia inválido' };
+    }
+
+    const data = new Date(ano, mes - 1, dia);
+
+    const dataValida =
+      data.getFullYear() === ano &&
+      data.getMonth() === mes - 1 &&
+      data.getDate() === dia;
+
+    if (!dataValida) {
+      return { erro: 'Data inexistente' };
+    }
+
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    if (data < hoje) {
+      return {
+        erro: 'Não é possível criar tarefas para datas passadas',
+      };
+    }
+
+    const limiteFuturo = new Date();
+    limiteFuturo.setHours(0, 0, 0, 0);
+    limiteFuturo.setFullYear(limiteFuturo.getFullYear() + 150);
+
+    if (data > limiteFuturo) {
+      return {
+        erro: 'A data está muito distante no futuro',
+      };
+    }
+
+    return {
+      dataISO: `${anoStr}-${mesStr}-${diaStr}`,
+    };
   }
 
   const handleFechar = useCallback(() => {
@@ -230,18 +295,24 @@ function ModalNovaTarefa({
 
   const handleAdicionar = useCallback(() => {
     const tituloTrimado = titulo.trim();
+
     if (!tituloTrimado) return;
 
     let dataISO: string | undefined;
+
     if (dataTexto.trim()) {
-      dataISO = parseDataBR(dataTexto.trim());
-      if (!dataISO) {
-        setErroData('Formato inválido. Use dd/mm/aaaa');
+      const resultado = validarDataBR(dataTexto.trim());
+
+      if (resultado.erro) {
+        setErroData(resultado.erro);
         return;
       }
+
+      dataISO = resultado.dataISO;
     }
 
     onAdicionar(tituloTrimado, dataISO);
+
     setTitulo('');
     setDataTexto('');
     setErroData('');
@@ -297,10 +368,13 @@ function ModalNovaTarefa({
           <TextInput
             style={[estilos.modalInput, erroData ? estilos.modalInputErro : null]}
             value={dataTexto}
-            onChangeText={(t) => { setDataTexto(t); setErroData(''); }}
+            onChangeText={(texto) => {
+              setDataTexto(formatarDataInput(texto));
+              setErroData('');
+            }}
             placeholder="dd/mm/aaaa"
             placeholderTextColor={ShelloTema.cores.textoS}
-            keyboardType="default"
+            keyboardType="numeric"
             returnKeyType="done"
             onSubmitEditing={handleAdicionar}
             maxLength={10}
