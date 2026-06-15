@@ -30,6 +30,7 @@ import { ShelloTema } from '../styles/tema';
 import { useShello } from '../contexts/ShelloContext';
 import { MensagemChat, ExpressaoShello } from '../types';
 import api from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const markdownEstilos = {
   body: {
@@ -69,6 +70,24 @@ function horaAtual(): string {
 
 function gerarId(): string {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function mapearExpressaoShello(texto: string): ExpressaoShello {
+  const t = texto.toLowerCase();
+  
+  if (/🎉|😊|😄|❤️|🚀|parabéns|ótimo|excelente|feliz|sucesso|conseguiu|boa!|maravilha|oba|legal|comemora/i.test(t)) {
+    return 'feliz';
+  }
+  
+  if (/talvez|se |porém|mas |dúvida|difícil|estranho|confuso|problema|erro|infelizmente|desculpe|ops/i.test(t)) {
+    return 'duvidoso';
+  }
+  
+  if (/uau|nossa|sério|incrível|caramba|eita|caraca|olha só|!|\?/i.test(t)) {
+    return 'surpreso';
+  }
+  
+  return 'neutro';
 }
 
 // ─── Sugestões rápidas ────────────────────────────────────────────────────────
@@ -215,22 +234,70 @@ export default function TelaChat(): React.JSX.Element {
   const [tarefaSugerida, setTarefaSugerida] = useState<string | null>(null);
   const [confirmacaoTarefa, setConfirmacaoTarefa] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversaSavedLoaded, setConversaSavedLoaded] = useState(false);
 
   const flatListRef = useRef<FlatList<MensagemChat>>(null);
 
-  // ── Mensagem de boas-vindas ──────────────────────────────────────────────
+  // ── Carrega a conversa salva ao montar a tela ──────────────────────────────
   useEffect(() => {
-    const nome = nomeUsuario || 'amigo';
-    const boasVindas: MensagemChat = {
-      id: gerarId(),
-      remetente: 'ia',
-      conteudo: `Olá, ${nome}! 🌿 Sou o Shello, seu companheiro de crescimento pessoal. O que você quer explorar hoje?`,
-      horario: horaAtual(),
-      expressao: 'feliz',
+    const carregarConversaSalva = async () => {
+      try {
+        const [savedMsgs, savedConvId] = await Promise.all([
+          AsyncStorage.getItem('@shello:chat_messages'),
+          AsyncStorage.getItem('@shello:chat_conversation_id'),
+        ]);
+
+        if (savedMsgs) {
+          const parsed = JSON.parse(savedMsgs);
+          setMensagens(parsed);
+          const ultimaMsgIA = parsed.find((m: MensagemChat) => m.remetente === 'ia');
+          if (ultimaMsgIA && ultimaMsgIA.expressao) {
+            setExpressaoAtual(ultimaMsgIA.expressao);
+          }
+        } else {
+          const nome = nomeUsuario || 'amigo';
+          const boasVindas: MensagemChat = {
+            id: gerarId(),
+            remetente: 'ia',
+            conteudo: `Olá, ${nome}! 🌿 Sou o Shello, seu companheiro de crescimento pessoal. O que você quer explorar hoje?`,
+            horario: horaAtual(),
+            expressao: 'feliz',
+          };
+          setMensagens([boasVindas]);
+        }
+
+        if (savedConvId) {
+          setConversationId(savedConvId);
+        }
+      } catch (e) {
+        console.error('Erro ao carregar conversa:', e);
+      } finally {
+        setConversaSavedLoaded(true);
+      }
     };
-    setMensagens([boasVindas]);
+
+    carregarConversaSalva();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Salva a conversa sempre que mudar (após carregada) ──────────────────
+  useEffect(() => {
+    if (!conversaSavedLoaded) return;
+
+    const salvarConversa = async () => {
+      try {
+        await AsyncStorage.setItem('@shello:chat_messages', JSON.stringify(mensagens));
+        if (conversationId) {
+          await AsyncStorage.setItem('@shello:chat_conversation_id', conversationId);
+        } else {
+          await AsyncStorage.removeItem('@shello:chat_conversation_id');
+        }
+      } catch (e) {
+        console.error('Erro ao salvar conversa:', e);
+      }
+    };
+    salvarConversa();
+  }, [mensagens, conversationId, conversaSavedLoaded]);
 
   const mostrarSugestoes = mensagens.length < 3;
 
@@ -258,7 +325,7 @@ export default function TelaChat(): React.JSX.Element {
           conversation_id: conversationId ?? undefined,
         });
 
-        const expressao: ExpressaoShello = 'neutro';
+        const expressao = mapearExpressaoShello(data.response);
         setExpressaoAtual(expressao);
         setConversationId(data.conversation_id);
 

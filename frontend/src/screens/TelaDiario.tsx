@@ -7,6 +7,7 @@ import React, {
   useRef,
   useCallback,
   useEffect,
+  useMemo,
 } from 'react';
 import {
   View,
@@ -16,6 +17,8 @@ import {
   FlatList,
   Animated,
   ListRenderItemInfo,
+  TextInput,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -229,6 +232,35 @@ function EstadoVazio({ onNova }: EstadoVazioProps) {
   );
 }
 
+// ─── Componente: Estado Nenhum Resultado ───────────────────────────────────────
+
+interface EstadoNenhumResultadoProps {
+  busca: string;
+  filtroAtivo: string;
+  onLimpar: () => void;
+}
+
+function EstadoNenhumResultado({ busca, filtroAtivo, onLimpar }: EstadoNenhumResultadoProps) {
+  return (
+    <View style={estilos.vazioContainer}>
+      <View style={estilos.vazioIconeCirculo}>
+        <Feather name="search" size={36} color={ShelloTema.cores.textoS} />
+      </View>
+      <Text style={estilos.vazioTitulo}>Nenhuma entrada encontrada</Text>
+      <Text style={estilos.vazioSubtitulo}>
+        Não encontramos nenhuma reflexão com {busca ? `"${busca}"` : 'esse filtro'}. Tente ajustar sua busca ou limpar os filtros.
+      </Text>
+      <TouchableOpacity
+        style={estilos.vazioButtonCTA}
+        onPress={onLimpar}
+        activeOpacity={0.82}
+      >
+        <Text style={estilos.vazioButtonTexto}>Limpar filtros e busca</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
 export default function TelaDiario({ navigation }: Props) {
@@ -284,9 +316,57 @@ export default function TelaDiario({ navigation }: Props) {
     return unsubscribe;
   }, [navigation, entradas, dispararIaLendo]);
 
+  // ─── Busca e Filtros ────────────────────────────────────────────────────────
+
+  const [busca, setBusca] = useState('');
+  const [filtroAtivo, setFiltroAtivo] = useState<'todas' | 'contexto' | 'hoje' | 'ontem' | 'semana' | 'antigas'>('todas');
+
+  const handleLimparFiltros = useCallback(() => {
+    setBusca('');
+    setFiltroAtivo('todas');
+  }, []);
+
+  const entradasFiltradas = useMemo(() => {
+    return entradas.filter((entrada) => {
+      // 1. Filtro de busca
+      const matchBusca =
+        entrada.titulo.toLowerCase().includes(busca.toLowerCase()) ||
+        entrada.conteudo.toLowerCase().includes(busca.toLowerCase());
+
+      if (!matchBusca) return false;
+
+      // 2. Filtro de período/categoria
+      if (filtroAtivo === 'todas') return true;
+      if (filtroAtivo === 'contexto') return !!entrada.adicionadaAoContexto;
+
+      const dataEntrada = inicioDoDia(new Date(entrada.dataCriacao));
+      const agora = new Date();
+      const hoje = inicioDoDia(agora);
+      const ontem = new Date(hoje);
+      ontem.setDate(ontem.getDate() - 1);
+      const semanaAtras = new Date(hoje);
+      semanaAtras.setDate(semanaAtras.getDate() - 7);
+
+      if (filtroAtivo === 'hoje') {
+        return dataEntrada.getTime() === hoje.getTime();
+      }
+      if (filtroAtivo === 'ontem') {
+        return dataEntrada.getTime() === ontem.getTime();
+      }
+      if (filtroAtivo === 'semana') {
+        return dataEntrada >= semanaAtras;
+      }
+      if (filtroAtivo === 'antigas') {
+        return dataEntrada < semanaAtras;
+      }
+
+      return true;
+    });
+  }, [entradas, busca, filtroAtivo]);
+
   // ─── Lista plana com cabeçalhos ────────────────────────────────────────────
 
-  const itensLista: ItemLista[] = agruparEntradas(entradas, idIaLendo);
+  const itensLista: ItemLista[] = agruparEntradas(entradasFiltradas, idIaLendo);
 
   const renderItem = useCallback(
     ({ item }: ListRenderItemInfo<ItemLista>) => {
@@ -351,6 +431,64 @@ export default function TelaDiario({ navigation }: Props) {
           <Feather name="plus" size={18} color="#FFFFFF" style={estilos.botaoIcone} />
           <Text style={estilos.botaoNovaEntradaTexto}>Nova Entrada</Text>
         </TouchableOpacity>
+
+        {/* Input de busca */}
+        <View style={estilos.containerBusca}>
+          <Feather name="search" size={18} color={ShelloTema.cores.textoS} style={estilos.iconeBusca} />
+          <TextInput
+            style={estilos.inputBusca}
+            placeholder="Buscar nas suas reflexões..."
+            placeholderTextColor={ShelloTema.cores.textoS}
+            value={busca}
+            onChangeText={setBusca}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {busca.length > 0 && (
+            <TouchableOpacity onPress={() => setBusca('')} style={estilos.botaoLimpar}>
+              <Feather name="x" size={16} color={ShelloTema.cores.textoS} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Filtros horizontais */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={estilos.containerFiltros}
+          contentContainerStyle={estilos.conteudoFiltros}
+        >
+          {[
+            { id: 'todas', rotulo: 'Todas' },
+            { id: 'contexto', rotulo: 'No Contexto' },
+            { id: 'hoje', rotulo: 'Hoje' },
+            { id: 'ontem', rotulo: 'Ontem' },
+            { id: 'semana', rotulo: 'Esta Semana' },
+            { id: 'antigas', rotulo: 'Mais Antigas' },
+          ].map((opcao) => {
+            const ativo = filtroAtivo === opcao.id;
+            return (
+              <TouchableOpacity
+                key={opcao.id}
+                onPress={() => setFiltroAtivo(opcao.id as any)}
+                style={[
+                  estilos.pillFiltro,
+                  ativo && estilos.pillFiltroAtivo,
+                ]}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    estilos.textoPillFiltro,
+                    ativo && estilos.textoPillFiltroAtivo,
+                  ]}
+                >
+                  {opcao.rotulo}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
       {/* Lista de entradas */}
@@ -363,7 +501,17 @@ export default function TelaDiario({ navigation }: Props) {
           itensLista.length === 0 && estilos.conteudoListaVazia,
         ]}
         showsVerticalScrollIndicator={false}
-        ListEmptyComponent={<EstadoVazio onNova={handleNovaEntrada} />}
+        ListEmptyComponent={
+          entradas.length === 0 ? (
+            <EstadoVazio onNova={handleNovaEntrada} />
+          ) : (
+            <EstadoNenhumResultado
+              busca={busca}
+              filtroAtivo={filtroAtivo}
+              onLimpar={handleLimparFiltros}
+            />
+          )
+        }
       />
     </SafeAreaView>
   );
@@ -579,6 +727,60 @@ const estilos = StyleSheet.create({
   vazioButtonTexto: {
     color: '#FFFFFF',
     fontSize: ShelloTema.tipografia.tamanhos.normal,
+    fontWeight: ShelloTema.tipografia.pesos.negrito,
+  },
+  containerBusca: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: ShelloTema.cores.superficie,
+    borderRadius: ShelloTema.forma.bordaPill,
+    paddingHorizontal: ShelloTema.espacamento.md,
+    marginTop: ShelloTema.espacamento.md,
+    height: 46,
+    borderWidth: 1,
+    borderColor: ShelloTema.cores.marcaClaro + '60',
+    ...ShelloTema.sombra.suave,
+  },
+  iconeBusca: {
+    marginRight: ShelloTema.espacamento.sm,
+  },
+  inputBusca: {
+    flex: 1,
+    height: '100%',
+    color: ShelloTema.cores.textoP,
+    fontSize: ShelloTema.tipografia.tamanhos.pequeno,
+  },
+  botaoLimpar: {
+    padding: 4,
+  },
+  containerFiltros: {
+    marginTop: ShelloTema.espacamento.sm,
+    marginBottom: ShelloTema.espacamento.xs,
+  },
+  conteudoFiltros: {
+    paddingVertical: 6,
+    gap: ShelloTema.espacamento.sm,
+  },
+  pillFiltro: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: ShelloTema.forma.bordaPill,
+    backgroundColor: ShelloTema.cores.superficie,
+    borderWidth: 1,
+    borderColor: ShelloTema.cores.marcaClaro + '40',
+    ...ShelloTema.sombra.suave,
+  },
+  pillFiltroAtivo: {
+    backgroundColor: ShelloTema.cores.marca,
+    borderColor: ShelloTema.cores.marca,
+  },
+  textoPillFiltro: {
+    fontSize: ShelloTema.tipografia.tamanhos.minusculo,
+    color: ShelloTema.cores.textoS,
+    fontWeight: ShelloTema.tipografia.pesos.medio,
+  },
+  textoPillFiltroAtivo: {
+    color: '#FFFFFF',
     fontWeight: ShelloTema.tipografia.pesos.negrito,
   },
 });

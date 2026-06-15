@@ -1,7 +1,7 @@
 // TelaPerfil.tsx — Tela de Perfil do Usuário
 // Exibe dados do perfil, personalidade da IA, memórias e opções de conta
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,8 @@ import {
   TouchableOpacity,
   TextInput,
   Animated,
-  Alert,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -20,6 +21,7 @@ import { ShelloTema } from '../styles/tema';
 import { useShello } from '../contexts/ShelloContext';
 import { MemoriaIA, NivelFormalidade } from '../types';
 import api from '../services/api';
+import DialogShello from '../components/DialogShello';
 
 // ─── Memórias mockadas exibidas quando o contexto está vazio ────────────────
 
@@ -219,6 +221,21 @@ export default function TelaPerfil() {
   const [salvandoNome, setSalvandoNome] = useState(false);
   const [emailReal, setEmailReal] = useState('');
   const [nomeReal, setNomeReal] = useState('');
+  const [modalMemoriasVisivel, setModalMemoriasVisivel] = useState(false);
+  const [buscaMemoria, setBuscaMemoria] = useState('');
+  const [dialogConfig, setDialogConfig] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+    isDestructive?: boolean;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   useEffect(() => {
     if (nomeUsuario) setNomeReferencia(nomeUsuario);
@@ -234,6 +251,13 @@ export default function TelaPerfil() {
   }, []);
 
   const listaMemorias = memorias;
+
+  const memoriasModalFiltradas = useMemo(() => {
+    return listaMemorias.filter((m) =>
+      m.conteudo.toLowerCase().includes(buscaMemoria.toLowerCase()) ||
+      (CONFIGURACAO_TIPO[m.tipo]?.rotulo || m.tipo).toLowerCase().includes(buscaMemoria.toLowerCase())
+    );
+  }, [listaMemorias, buscaMemoria]);
 
   // Handler de remoção: chama a função do contexto com o id da memória
   const handleRemoverMemoria = useCallback(
@@ -269,33 +293,41 @@ export default function TelaPerfil() {
 
       definirUsuario(nomeTrimado, true);
       await recarregarMemorias();
-      Alert.alert('Salvo', `O Shello vai te chamar de "${nomeTrimado}" agora.`);
+      setDialogConfig({
+        visible: true,
+        title: 'Nome salvo',
+        message: `O Shello vai te chamar de "${nomeTrimado}" agora.`,
+        confirmLabel: 'Ok',
+        onConfirm: () => {},
+      });
     } catch {
-      Alert.alert('Erro', 'Não foi possível salvar. Tente novamente.');
+      setDialogConfig({
+        visible: true,
+        title: 'Erro',
+        message: 'Não foi possível salvar. Tente novamente.',
+        confirmLabel: 'Ok',
+        onConfirm: () => {},
+      });
     } finally {
       setSalvandoNome(false);
     }
   }, [nomeReferencia, definirUsuario, memorias, recarregarMemorias]);
 
   const handleSair = useCallback(() => {
-    Alert.alert(
-      'Sair da conta',
-      'Deseja mesmo sair?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Sair',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await sair();
-            } catch (erro) {
-              console.error('Erro ao sair:', erro);
-            }
-          },
-        },
-      ]
-    );
+    setDialogConfig({
+      visible: true,
+      title: 'Sair da conta',
+      message: 'Deseja mesmo sair?',
+      confirmLabel: 'Sair',
+      isDestructive: true,
+      onConfirm: async () => {
+        try {
+          await sair();
+        } catch (erro) {
+          console.error('Erro ao sair:', erro);
+        }
+      },
+    });
   }, [sair]);
 
   const primeiroNome = nomeReferencia || nomeReal.split(' ')[0] || nomeUsuario.split(' ')[0] || 'Usuário';
@@ -437,13 +469,28 @@ export default function TelaPerfil() {
               </Text>
             </View>
           ) : (
-            listaMemorias.map((memoria) => (
-              <CardMemoria
-                key={memoria.id}
-                memoria={memoria}
-                aoRemover={handleRemoverMemoria}
-              />
-            ))
+            <>
+              {listaMemorias.slice(0, 5).map((memoria) => (
+                <CardMemoria
+                  key={memoria.id}
+                  memoria={memoria}
+                  aoRemover={handleRemoverMemoria}
+                />
+              ))}
+
+              {listaMemorias.length > 5 && (
+                <TouchableOpacity
+                  style={estilos.botaoVerTodas}
+                  onPress={() => setModalMemoriasVisivel(true)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={estilos.textoBotaoVerTodas}>
+                    Ver todas as {listaMemorias.length} memórias
+                  </Text>
+                  <Feather name="arrow-right" size={14} color={ShelloTema.cores.marca} />
+                </TouchableOpacity>
+              )}
+            </>
           )}
 
           {/* Nota explicativa sobre as memórias */}
@@ -526,6 +573,89 @@ export default function TelaPerfil() {
         {/* Espaçamento inferior */}
         <View style={estilos.espacamentoInferior} />
       </ScrollView>
+
+      <DialogShello
+        visible={dialogConfig.visible}
+        onClose={() => setDialogConfig(prev => ({ ...prev, visible: false }))}
+        title={dialogConfig.title}
+        message={dialogConfig.message}
+        confirmLabel={dialogConfig.confirmLabel}
+        onConfirm={dialogConfig.onConfirm}
+        isDestructive={dialogConfig.isDestructive}
+      />
+
+      <Modal
+        visible={modalMemoriasVisivel}
+        animationType="slide"
+        onRequestClose={() => {
+          setModalMemoriasVisivel(false);
+          setBuscaMemoria('');
+        }}
+      >
+        <SafeAreaView style={estilos.modalAreaSegura}>
+          {/* Cabeçalho do modal */}
+          <View style={estilos.modalCabecalho}>
+            <TouchableOpacity
+              onPress={() => {
+                setModalMemoriasVisivel(false);
+                setBuscaMemoria('');
+              }}
+              style={estilos.modalBotaoFechar}
+            >
+              <Feather name="chevron-left" size={24} color={ShelloTema.cores.textoP} />
+            </TouchableOpacity>
+            <Text style={estilos.modalTitulo}>Memórias do Shello</Text>
+            <View style={{ width: 40 }} /> {/* Espaçador para alinhar título */}
+          </View>
+
+          <View style={estilos.modalConteudo}>
+            <Text style={estilos.modalSubtitulo}>
+              Todas as informações que o Shello guardou para personalizar a experiência.
+            </Text>
+
+            {/* Input de busca no modal */}
+            <View style={estilos.modalContainerBusca}>
+              <Feather name="search" size={18} color={ShelloTema.cores.textoS} style={estilos.modalIconeBusca} />
+              <TextInput
+                style={estilos.modalInputBusca}
+                placeholder="Filtrar memórias..."
+                placeholderTextColor={ShelloTema.cores.textoS}
+                value={buscaMemoria}
+                onChangeText={setBuscaMemoria}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {buscaMemoria.length > 0 && (
+                <TouchableOpacity onPress={() => setBuscaMemoria('')}>
+                  <Feather name="x" size={16} color={ShelloTema.cores.textoS} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* FlatList virtualizada */}
+            <FlatList
+              data={memoriasModalFiltradas}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <CardMemoria
+                  memoria={item}
+                  aoRemover={handleRemoverMemoria}
+                />
+              )}
+              contentContainerStyle={estilos.modalListaConteudo}
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                <View style={estilos.modalListaVazia}>
+                  <Feather name="search" size={32} color={ShelloTema.cores.textoS} />
+                  <Text style={estilos.modalListaVaziaTexto}>
+                    Nenhuma memória corresponde à busca.
+                  </Text>
+                </View>
+              }
+            />
+          </View>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -795,5 +925,90 @@ const estilos = StyleSheet.create({
   // Espaçamento extra no final do scroll
   espacamentoInferior: {
     height: ShelloTema.espacamento.xl,
+  },
+  modalAreaSegura: {
+    flex: 1,
+    backgroundColor: ShelloTema.cores.fundo,
+  },
+  modalCabecalho: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: ShelloTema.espacamento.md,
+    paddingVertical: ShelloTema.espacamento.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: ShelloTema.cores.marcaClaro + '40',
+    backgroundColor: ShelloTema.cores.superficie,
+  },
+  modalBotaoFechar: {
+    padding: 8,
+  },
+  modalTitulo: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: ShelloTema.cores.textoP,
+    fontFamily: 'serif',
+  },
+  modalConteudo: {
+    flex: 1,
+    padding: ShelloTema.espacamento.lg,
+  },
+  modalSubtitulo: {
+    fontSize: 13,
+    color: ShelloTema.cores.textoS,
+    lineHeight: 18,
+    marginBottom: ShelloTema.espacamento.md,
+  },
+  modalContainerBusca: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: ShelloTema.cores.superficie,
+    borderRadius: ShelloTema.forma.bordaPill,
+    paddingHorizontal: ShelloTema.espacamento.md,
+    height: 44,
+    borderWidth: 1,
+    borderColor: ShelloTema.cores.marcaClaro + '60',
+    marginBottom: ShelloTema.espacamento.md,
+    ...ShelloTema.sombra.suave,
+  },
+  modalIconeBusca: {
+    marginRight: ShelloTema.espacamento.sm,
+  },
+  modalInputBusca: {
+    flex: 1,
+    height: '100%',
+    color: ShelloTema.cores.textoP,
+    fontSize: 14,
+  },
+  modalListaConteudo: {
+    paddingBottom: ShelloTema.espacamento.xl,
+  },
+  modalListaVazia: {
+    alignItems: 'center',
+    paddingVertical: ShelloTema.espacamento.xxl,
+    gap: ShelloTema.espacamento.sm,
+  },
+  modalListaVaziaTexto: {
+    fontSize: 13,
+    color: ShelloTema.cores.textoS,
+    textAlign: 'center',
+  },
+  botaoVerTodas: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: ShelloTema.cores.marcaClaro + '30',
+    borderRadius: ShelloTema.forma.bordaPill,
+    paddingVertical: ShelloTema.espacamento.sm,
+    paddingHorizontal: ShelloTema.espacamento.md,
+    marginTop: ShelloTema.espacamento.sm,
+    borderWidth: 1,
+    borderColor: ShelloTema.cores.marca + '30',
+    gap: ShelloTema.espacamento.sm,
+  },
+  textoBotaoVerTodas: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: ShelloTema.cores.marca,
   },
 });
