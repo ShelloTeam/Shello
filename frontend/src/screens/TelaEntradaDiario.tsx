@@ -26,6 +26,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ShelloTema } from '../styles/tema';
 import { useShello } from '../contexts/ShelloContext';
 import type { DiarioStackParamList } from '../navigation/NavegacaoDiario';
+import type { EntradaDiario } from '../types';
 import DialogShello from '../components/DialogShello';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -50,6 +51,9 @@ export default function TelaEntradaDiario({ route, navigation }: Props): React.J
   const animacaoContexto = useRef(new Animated.Value(0)).current;
   const animacaoRef = useRef<Animated.CompositeAnimation | null>(null);
   const timerModal = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Ref para guardar a Promise pendente de criação da entrada
+  // Evita que adicionarAoContexto + finalizarEntrada criem duas entradas no banco
+  const criandoEntradaRef = useRef<Promise<EntradaDiario> | null>(null);
 
   // Cleanup de animações e timers ao desmontar
   useEffect(() => {
@@ -85,14 +89,22 @@ export default function TelaEntradaDiario({ route, navigation }: Props): React.J
       const titulo = gerarTitulo(conteudoTrimado);
       if (idEntradaSalva) {
         await atualizarEntrada(idEntradaSalva, titulo, conteudoTrimado);
+      } else if (criandoEntradaRef.current) {
+        // Criação já em andamento por adicionarAoContexto — aguarda a mesma Promise
+        const entradaCriada = await criandoEntradaRef.current;
+        setIdEntradaSalva(entradaCriada.id);
+        await atualizarEntrada(entradaCriada.id, titulo, conteudoTrimado);
       } else {
-        const novaEntrada = await adicionarEntrada(titulo, conteudoTrimado);
+        const promise = adicionarEntrada(titulo, conteudoTrimado);
+        criandoEntradaRef.current = promise;
+        const novaEntrada = await promise;
         setIdEntradaSalva(novaEntrada.id);
       }
       navigation.goBack();
     } catch (e) {
       console.error('Erro ao salvar entrada:', e);
     } finally {
+      criandoEntradaRef.current = null;
       setSalvando(false);
     }
   }, [texto, idEntradaSalva, adicionarEntrada, atualizarEntrada, navigation]);
@@ -106,11 +118,15 @@ export default function TelaEntradaDiario({ route, navigation }: Props): React.J
     try {
       let idParaContexto = idEntradaSalva;
       if (!idParaContexto) {
-        const novaEntrada = await adicionarEntrada(gerarTitulo(conteudoTrimado), conteudoTrimado);
+        // Se finalizarEntrada já iniciou a criação, reutiliza a mesma Promise
+        if (!criandoEntradaRef.current) {
+          criandoEntradaRef.current = adicionarEntrada(gerarTitulo(conteudoTrimado), conteudoTrimado);
+        }
+        const novaEntrada = await criandoEntradaRef.current;
         setIdEntradaSalva(novaEntrada.id);
         idParaContexto = novaEntrada.id;
       }
-      await marcarEntradaComoContexto(idParaContexto, conteudoTrimado);
+      await marcarEntradaComoContexto(idParaContexto!, conteudoTrimado);
 
       animacaoRef.current = Animated.sequence([
         Animated.timing(animacaoContexto, { toValue: 1, duration: 300, useNativeDriver: true }),
@@ -128,6 +144,8 @@ export default function TelaEntradaDiario({ route, navigation }: Props): React.J
         JSON.stringify(e?.response?.data ?? e, null, 2)
       );
     } finally {
+      // Só limpa a ref se foi este callback que iniciou a criação
+      // (finalizarEntrada pode precisar da ref ainda)
       setAdicionandoContexto(false);
     }
   }, [texto, idEntradaSalva, adicionarEntrada, marcarEntradaComoContexto, animacaoContexto]);

@@ -17,6 +17,7 @@ from app.controllers.onboarding_controller import router as onboarding_mobile_ro
 from app.api.v1.auth import router as auth_router
 from app.api.v1.onboarding import router as onboarding_router
 from app.api.v1.context_fragments import router as context_router
+from app.api.v1.tasks import router as tasks_v1_router
 
 tags_metadata = [
     {"name": "Health",        "description": "Verificação de saúde da API"},
@@ -87,6 +88,7 @@ app.include_router(onboarding_mobile_router)
 app.include_router(auth_router)
 app.include_router(onboarding_router)
 app.include_router(context_router)
+app.include_router(tasks_v1_router)
 
 @app.get("/health", tags=["Health"], summary="Verificação de saúde")
 async def health():

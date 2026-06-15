@@ -46,6 +46,7 @@ export default function NavegacaoAbas() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
+        tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: ShelloTema.cores.marca,
         tabBarInactiveTintColor: ShelloTema.cores.textoS,
         tabBarStyle: estilos.barraAbas,

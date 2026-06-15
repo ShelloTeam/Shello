@@ -34,6 +34,7 @@ interface ShelloContextData {
   marcarEntradaComoContexto: (id: string, conteudo: string) => Promise<void>;
 
   adicionarTarefa: (titulo: string, descricao?: string, data?: string) => Promise<Tarefa>;
+  adicionarTarefaDeChat: (titulo: string) => Promise<Tarefa>;
   alternarTarefa: (id: string) => Promise<void>;
   removerTarefa: (id: string) => Promise<void>;
 
@@ -75,7 +76,7 @@ function mapTask(t: any): Tarefa {
     descricao: t.description ?? undefined,
     concluida: t.status === 'done',
     data: t.due_date ?? undefined,
-    dataCriacao: t.created_at,
+    dataCriacao: t.created_at ?? new Date().toISOString(),
   };
 }
 
@@ -221,8 +222,10 @@ export function ShelloProvider({ children }: { children: ReactNode }) {
   const atualizarEntrada = useCallback(async (id: string, _titulo: string, conteudo: string): Promise<void> => {
     const { data } = await api.put(`/api/diary/${id}`, { content: conteudo });
     const atualizada = mapDiaryEntry(data);
-    setEntradas((ant) => ant.map((e) => (e.id === id ? atualizada : e)));
+    // Preserva adicionadaAoContexto — mapDiaryEntry sempre retorna false, mas o estado real é local
+    setEntradas((ant) => ant.map((e) => e.id === id ? { ...atualizada, adicionadaAoContexto: e.adicionadaAoContexto } : e));
   }, []);
+
 
   const removerEntrada = useCallback(async (id: string): Promise<void> => {
     await api.delete(`/api/diary/${id}`);
@@ -278,6 +281,27 @@ export function ShelloProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const adicionarTarefaDeChat = useCallback(async (titulo: string): Promise<Tarefa> => {
+    const tempId = `temp-${Date.now()}`;
+    const tempTarefa: Tarefa = {
+      id: tempId,
+      titulo,
+      concluida: false,
+      dataCriacao: new Date().toISOString(),
+    };
+    setTarefas((ant) => [...ant, tempTarefa]);
+
+    try {
+      const { data: res } = await api.post('/api/tasks/from-chat', { title: titulo });
+      const nova = mapTask(res);
+      setTarefas((ant) => ant.map((t) => (t.id === tempId ? nova : t)));
+      return nova;
+    } catch (err) {
+      setTarefas((ant) => ant.filter((t) => t.id !== tempId));
+      throw err;
+    }
+  }, []);
+
   const alternarTarefa = useCallback(async (id: string): Promise<void> => {
     const tarefa = tarefas.find((t) => t.id === id);
     const novoStatus = tarefa?.concluida ? 'pending' : 'done';
@@ -286,7 +310,7 @@ export function ShelloProvider({ children }: { children: ReactNode }) {
     setTarefas((ant) => ant.map((t) => (t.id === id ? { ...t, concluida: !t.concluida } : t)));
 
     try {
-      const { data } = await api.patch(`/api/tasks/${id}`, { status: novoStatus });
+      const { data } = await api.patch(`/api/v1/tasks/${id}/status`, { status: novoStatus });
       const atualizada = mapTask(data);
       setTarefas((ant) => ant.map((t) => (t.id === id ? atualizada : t)));
     } catch {
@@ -385,6 +409,7 @@ export function ShelloProvider({ children }: { children: ReactNode }) {
     removerEntrada,
     marcarEntradaComoContexto,
     adicionarTarefa,
+    adicionarTarefaDeChat,
     alternarTarefa,
     removerTarefa,
     adicionarRotina,
