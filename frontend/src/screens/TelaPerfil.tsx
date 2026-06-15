@@ -1,7 +1,7 @@
 // TelaPerfil.tsx — Tela de Perfil do Usuário
 // Exibe dados do perfil, personalidade da IA, memórias e opções de conta
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import { ShelloTema } from '../styles/tema';
 import { useShello } from '../contexts/ShelloContext';
 import { MemoriaIA, NivelFormalidade } from '../types';
 import api from '../services/api';
+import DialogShello from '../components/DialogShello';
 
 // ─── Memórias mockadas exibidas quando o contexto está vazio ────────────────
 
@@ -324,7 +325,6 @@ const estilosModal = StyleSheet.create({
     alignItems: 'center',
   },
   botaoTexto: {
-    left: -30,
     fontSize: 15,
     fontWeight: '700',
     color: ShelloTema.cores.superficie,
@@ -446,8 +446,7 @@ function ModalConfirmarSaida({ aoConfirmar, aoCancelar }: ModalConfirmarSaidaPro
 
 const estilosModalSaida = StyleSheet.create({
   iconeBtn: {
-    position: 'absolute',
-    left: 20,
+    marginRight: 8
   },
   iconeWrapper: {
     width: 72,
@@ -461,7 +460,6 @@ const estilosModalSaida = StyleSheet.create({
   botaoSair: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     alignSelf: 'center',
     backgroundColor: '#8B5E3C',
     borderRadius: ShelloTema.forma.bordaPill,
@@ -510,6 +508,21 @@ export default function TelaPerfil() {
   const [modalErro, setModalErro] = useState(false);
   const [emailReal, setEmailReal] = useState('');
   const [nomeReal, setNomeReal] = useState('');
+  const [modalMemoriasVisivel, setModalMemoriasVisivel] = useState(false);
+  const [buscaMemoria, setBuscaMemoria] = useState('');
+  const [dialogConfig, setDialogConfig] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    onConfirm: () => void;
+    isDestructive?: boolean;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   useEffect(() => {
     if (nomeUsuario) setNomeReferencia(nomeUsuario);
@@ -525,6 +538,13 @@ export default function TelaPerfil() {
   }, []);
 
   const listaMemorias = memorias;
+
+  const memoriasModalFiltradas = useMemo(() => {
+    return listaMemorias.filter((m) =>
+      m.conteudo.toLowerCase().includes(buscaMemoria.toLowerCase()) ||
+      (CONFIGURACAO_TIPO[m.tipo]?.rotulo || m.tipo).toLowerCase().includes(buscaMemoria.toLowerCase())
+    );
+  }, [listaMemorias, buscaMemoria]);
 
   // Handler de remoção: chama a função do contexto com o id da memória
   const handleRemoverMemoria = useCallback(
@@ -711,13 +731,28 @@ export default function TelaPerfil() {
               </Text>
             </View>
           ) : (
-            listaMemorias.map((memoria) => (
-              <CardMemoria
-                key={memoria.id}
-                memoria={memoria}
-                aoRemover={handleRemoverMemoria}
-              />
-            ))
+            <>
+              {listaMemorias.slice(0, 5).map((memoria) => (
+                <CardMemoria
+                  key={memoria.id}
+                  memoria={memoria}
+                  aoRemover={handleRemoverMemoria}
+                />
+              ))}
+
+              {listaMemorias.length > 5 && (
+                <TouchableOpacity
+                  style={estilos.botaoVerTodas}
+                  onPress={() => setModalMemoriasVisivel(true)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={estilos.textoBotaoVerTodas}>
+                    Ver todas as {listaMemorias.length} memórias
+                  </Text>
+                  <Feather name="arrow-right" size={14} color={ShelloTema.cores.marca} />
+                </TouchableOpacity>
+              )}
+            </>
           )}
 
           {/* Nota explicativa sobre as memórias */}
@@ -1096,5 +1131,90 @@ const estilos = StyleSheet.create({
   // Espaçamento extra no final do scroll
   espacamentoInferior: {
     height: ShelloTema.espacamento.xl,
+  },
+  modalAreaSegura: {
+    flex: 1,
+    backgroundColor: ShelloTema.cores.fundo,
+  },
+  modalCabecalho: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: ShelloTema.espacamento.md,
+    paddingVertical: ShelloTema.espacamento.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: ShelloTema.cores.marcaClaro + '40',
+    backgroundColor: ShelloTema.cores.superficie,
+  },
+  modalBotaoFechar: {
+    padding: 8,
+  },
+  modalTitulo: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: ShelloTema.cores.textoP,
+    fontFamily: 'serif',
+  },
+  modalConteudo: {
+    flex: 1,
+    padding: ShelloTema.espacamento.lg,
+  },
+  modalSubtitulo: {
+    fontSize: 13,
+    color: ShelloTema.cores.textoS,
+    lineHeight: 18,
+    marginBottom: ShelloTema.espacamento.md,
+  },
+  modalContainerBusca: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: ShelloTema.cores.superficie,
+    borderRadius: ShelloTema.forma.bordaPill,
+    paddingHorizontal: ShelloTema.espacamento.md,
+    height: 44,
+    borderWidth: 1,
+    borderColor: ShelloTema.cores.marcaClaro + '60',
+    marginBottom: ShelloTema.espacamento.md,
+    ...ShelloTema.sombra.suave,
+  },
+  modalIconeBusca: {
+    marginRight: ShelloTema.espacamento.sm,
+  },
+  modalInputBusca: {
+    flex: 1,
+    height: '100%',
+    color: ShelloTema.cores.textoP,
+    fontSize: 14,
+  },
+  modalListaConteudo: {
+    paddingBottom: ShelloTema.espacamento.xl,
+  },
+  modalListaVazia: {
+    alignItems: 'center',
+    paddingVertical: ShelloTema.espacamento.xxl,
+    gap: ShelloTema.espacamento.sm,
+  },
+  modalListaVaziaTexto: {
+    fontSize: 13,
+    color: ShelloTema.cores.textoS,
+    textAlign: 'center',
+  },
+  botaoVerTodas: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: ShelloTema.cores.marcaClaro + '30',
+    borderRadius: ShelloTema.forma.bordaPill,
+    paddingVertical: ShelloTema.espacamento.sm,
+    paddingHorizontal: ShelloTema.espacamento.md,
+    marginTop: ShelloTema.espacamento.sm,
+    borderWidth: 1,
+    borderColor: ShelloTema.cores.marca + '30',
+    gap: ShelloTema.espacamento.sm,
+  },
+  textoBotaoVerTodas: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: ShelloTema.cores.marca,
   },
 });

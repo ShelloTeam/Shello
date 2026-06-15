@@ -26,6 +26,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ShelloTema } from '../styles/tema';
 import { useShello } from '../contexts/ShelloContext';
 import type { DiarioStackParamList } from '../navigation/NavegacaoDiario';
+import DialogShello from '../components/DialogShello';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -35,13 +36,14 @@ type Props = NativeStackScreenProps<DiarioStackParamList, 'EntradaDiario'>;
 
 export default function TelaEntradaDiario({ route, navigation }: Props): React.JSX.Element {
   const { entrada, nova } = route.params ?? {};
-  const { adicionarEntrada, atualizarEntrada, marcarEntradaComoContexto } = useShello();
+  const { adicionarEntrada, atualizarEntrada, marcarEntradaComoContexto, removerEntrada } = useShello();
 
   // ── Estado ────────────────────────────────────────────────────────────────
   const [texto, setTexto] = useState(entrada?.conteudo ?? '');
   const [salvando, setSalvando] = useState(false);
   const [adicionandoContexto, setAdicionandoContexto] = useState(false);
   const [modalContexto, setModalContexto] = useState(false);
+  const [modalExcluir, setModalExcluir] = useState(false);
   const [idEntradaSalva, setIdEntradaSalva] = useState<string | null>(entrada?.id ?? null);
 
   const inputRef = useRef<TextInput>(null);
@@ -130,6 +132,20 @@ export default function TelaEntradaDiario({ route, navigation }: Props): React.J
     }
   }, [texto, idEntradaSalva, adicionarEntrada, marcarEntradaComoContexto, animacaoContexto]);
 
+  const deletarEntrada = useCallback(async () => {
+    if (idEntradaSalva) {
+      setSalvando(true);
+      try {
+        await removerEntrada(idEntradaSalva);
+        navigation.goBack();
+      } catch (e) {
+        console.error('Erro ao excluir entrada:', e);
+      } finally {
+        setSalvando(false);
+      }
+    }
+  }, [idEntradaSalva, removerEntrada, navigation]);
+
   const totalChars = texto.length;
   const tituloTela = entrada ? 'Editar entrada' : 'Nova entrada';
 
@@ -152,7 +168,19 @@ export default function TelaEntradaDiario({ route, navigation }: Props): React.J
             <Feather name="arrow-left" size={22} color={ShelloTema.cores.textoP} />
           </TouchableOpacity>
           <Text style={estilos.tituloTela}>{tituloTela}</Text>
-          <View style={estilos.espacadorDireita} />
+          {idEntradaSalva ? (
+            <TouchableOpacity
+              style={estilos.botaoExcluirHeader}
+              onPress={() => setModalExcluir(true)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel="Excluir entrada"
+              accessibilityRole="button"
+            >
+              <Feather name="trash-2" size={22} color={ShelloTema.cores.erro} />
+            </TouchableOpacity>
+          ) : (
+            <View style={estilos.espacadorDireita} />
+          )}
         </View>
 
         {/* ── Barra de ações ────────────────────────────────────────────── */}
@@ -247,6 +275,18 @@ export default function TelaEntradaDiario({ route, navigation }: Props): React.J
           </View>
         </View>
       </Modal>
+
+      {/* ── Dialog de exclusão ───────────────────────────────────────── */}
+      <DialogShello
+        visible={modalExcluir}
+        onClose={() => setModalExcluir(false)}
+        title="Excluir Entrada"
+        message="Tem certeza que deseja apagar esta reflexão? Esta ação não pode ser desfeita."
+        confirmLabel="Excluir"
+        cancelLabel="Cancelar"
+        onConfirm={deletarEntrada}
+        isDestructive
+      />
     </SafeAreaView>
   );
 }
@@ -277,6 +317,11 @@ const estilos = StyleSheet.create({
     letterSpacing: 0.3,
   },
   espacadorDireita: { width: 30 },
+  botaoExcluirHeader: {
+    width: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
   // Barra de ações
   barraAcoes: {

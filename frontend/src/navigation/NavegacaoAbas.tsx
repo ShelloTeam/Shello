@@ -2,7 +2,7 @@
 // Configura o BottomTabNavigator principal do Shello com 5 abas
 
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Feather } from '@expo/vector-icons';
 import { ShelloTema } from '../styles/tema';
@@ -20,9 +20,10 @@ const Tab = createBottomTabNavigator();
 interface BotaoChatProps {
   children: React.ReactNode;
   onPress?: () => void;
+  focused: boolean;
 }
 
-function BotaoChat({ children, onPress }: BotaoChatProps) {
+function BotaoChat({ children, onPress, focused }: BotaoChatProps) {
   return (
     <TouchableOpacity
       activeOpacity={0.85}
@@ -31,7 +32,10 @@ function BotaoChat({ children, onPress }: BotaoChatProps) {
       accessibilityLabel="Abrir chat com Shello"
       accessibilityRole="button"
     >
-      <View style={estilos.botaoChatInterno}>{children}</View>
+      <View style={[
+        estilos.botaoChatInterno,
+        { backgroundColor: focused ? ShelloTema.cores.marca : ShelloTema.cores.marcaClaro }
+      ]}>{children}</View>
     </TouchableOpacity>
   );
 }
@@ -61,10 +65,10 @@ export default function NavegacaoAbas() {
 
           if (route.name === 'ChatTab') {
             return (
-              <Feather
-                name="zap"
-                size={tamanho}
-                color={focused ? '#FFFFFF' : '#FFFFFF'}
+              <Image
+                source={require('../../assets/logoshello.jpeg')}
+                style={{ width: tamanho, height: tamanho, borderRadius: tamanho / 2 }}
+                resizeMode="cover"
               />
             );
           }
@@ -94,11 +98,18 @@ export default function NavegacaoAbas() {
         component={TelaChat}
         options={{
           tabBarLabel: 'Shello',
-          tabBarButton: (props) => (
-            <BotaoChat onPress={props.onPress as () => void}>
-              <Feather name="zap" size={26} color="#FFFFFF" />
-            </BotaoChat>
-          ),
+          tabBarButton: (props) => {
+            const focused = props.accessibilityState?.selected ?? false;
+            return (
+              <BotaoChat onPress={props.onPress as () => void} focused={focused}>
+                <Image
+                  source={require('../../assets/logoshello.jpeg')}
+                  style={{ width: 56, height: 56, borderRadius: 28 }}
+                  resizeMode="cover"
+                />
+              </BotaoChat>
+            );
+          },
         }}
       />
       <Tab.Screen

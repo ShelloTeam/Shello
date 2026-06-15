@@ -16,6 +16,7 @@ import {
 } from '../types';
 import api from '../services/api';
 import { getStoredUser, logout as authLogout } from '../services/authService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface ShelloContextData {
   nomeUsuario: string;
@@ -34,6 +35,9 @@ interface ShelloContextData {
 
   adicionarTarefa: (titulo: string, descricao?: string, data?: string) => Promise<Tarefa>;
   alternarTarefa: (id: string) => Promise<void>;
+  removerTarefa: (id: string) => Promise<void>;
+
+  removerEntrada: (id: string) => Promise<void>;
 
   adicionarRotina: (titulo: string, atividades: string[], periodo: Rotina['periodo']) => Promise<void>;
   removerRotina: (id: string) => Promise<void>;
@@ -108,7 +112,9 @@ function classificarTipoMemoria(conteudo: string): MemoriaIA['tipo'] {
 
 function conteudoSimilar(a: string, b: string): boolean {
   const norm = (s: string) => s.toLowerCase().replace(/[^a-záàâãéêíóôõúç]/g, ' ').replace(/\s+/g, ' ').trim();
-  return norm(a).slice(0, 60) === norm(b).slice(0, 60);
+  const normA = norm(a);
+  const normB = norm(b);
+  return normA.slice(0, 250) === normB.slice(0, 250);
 }
 
 // ── Provider ──────────────────────────────────────────────────────────────────
@@ -140,18 +146,27 @@ export function ShelloProvider({ children }: { children: ReactNode }) {
         api.get('/api/users/preferences'),
       ]);
 
+      let loadedMemorias: MemoriaIA[] = [];
+      if (memoriasRes.status === 'fulfilled') {
+        loadedMemorias = (memoriasRes.value.data ?? []).map(mapMemoria);
+        setMemorias(loadedMemorias);
+      }
+
       if (entradasRes.status === 'fulfilled') {
         const items = entradasRes.value.data?.items ?? entradasRes.value.data ?? [];
-        setEntradas(items.map(mapDiaryEntry));
+        const mappedEntradas = items.map((d: any) => {
+          const entry = mapDiaryEntry(d);
+          const prefixo = `Reflexão do diário: ${entry.conteudo.slice(0, 450)}`;
+          entry.adicionadaAoContexto = loadedMemorias.some((m) => conteudoSimilar(m.conteudo, prefixo));
+          return entry;
+        });
+        setEntradas(mappedEntradas);
       }
       if (tarefasRes.status === 'fulfilled') {
         setTarefas((tarefasRes.value.data ?? []).map(mapTask));
       }
       if (rotinasRes.status === 'fulfilled') {
         setRotinas((rotinasRes.value.data ?? []).map(mapRotina));
-      }
-      if (memoriasRes.status === 'fulfilled') {
-        setMemorias((memoriasRes.value.data ?? []).map(mapMemoria));
       }
 
       // Define nome uma única vez — preferência > nome de cadastro (evita flicker)
@@ -207,6 +222,11 @@ export function ShelloProvider({ children }: { children: ReactNode }) {
     const { data } = await api.put(`/api/diary/${id}`, { content: conteudo });
     const atualizada = mapDiaryEntry(data);
     setEntradas((ant) => ant.map((e) => (e.id === id ? atualizada : e)));
+  }, []);
+
+  const removerEntrada = useCallback(async (id: string): Promise<void> => {
+    await api.delete(`/api/diary/${id}`);
+    setEntradas((ant) => ant.filter((e) => e.id !== id));
   }, []);
 
   const marcarEntradaComoContexto = useCallback(async (id: string, conteudo: string): Promise<void> => {
@@ -275,6 +295,11 @@ export function ShelloProvider({ children }: { children: ReactNode }) {
     }
   }, [tarefas]);
 
+  const removerTarefa = useCallback(async (id: string): Promise<void> => {
+    await api.delete(`/api/tasks/${id}`);
+    setTarefas((ant) => ant.filter((t) => t.id !== id));
+  }, []);
+
   // ── Rotinas ────────────────────────────────────────────────────────────────
 
   const adicionarRotina = useCallback(async (
@@ -306,6 +331,11 @@ export function ShelloProvider({ children }: { children: ReactNode }) {
   }, [carregarDados]);
 
   const sair = useCallback(async (): Promise<void> => {
+    try {
+      await AsyncStorage.multiRemove(['@shello:chat_messages', '@shello:chat_conversation_id']);
+    } catch (e) {
+      console.error('Erro ao limpar dados do chat no logout:', e);
+    }
     await authLogout();
     setNomeUsuario('');
     setOnboardingConcluido(false);
@@ -352,9 +382,11 @@ export function ShelloProvider({ children }: { children: ReactNode }) {
     memorias,
     adicionarEntrada,
     atualizarEntrada,
+    removerEntrada,
     marcarEntradaComoContexto,
     adicionarTarefa,
     alternarTarefa,
+    removerTarefa,
     adicionarRotina,
     removerRotina,
     concluirOnboarding,

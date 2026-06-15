@@ -18,6 +18,12 @@ export const ShelloTema = {
     marcaClaro: '#D6E2D8',
     /** Salmão/Terracota suave — CTAs secundários */
     terracota: '#EADCD6',
+    terracotaIcone: '#B5856A',
+    terracotaTitulo: '#8B5E4A',
+    terracotaTexto: '#B5856A',
+    /** Pêssego / Terracota claro — botões e destaques */
+    pessego: '#F2D4C8',
+    pessegoDark: '#A05A44',
     /** Vermelho padrão — atrasos ou exclusões */
     erro: '#DC3545',
   },

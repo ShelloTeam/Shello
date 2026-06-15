@@ -18,11 +18,7 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { ShelloTema } from '../styles/tema';
 import { useShello } from '../contexts/ShelloContext';
 
-// ─── Constantes de cor terracota (tokens pendentes no ShelloTema) ─────────────
-// TODO: mover para ShelloTema quando os tokens forem oficializados
-const COR_TERRACOTA_ICONE = '#B5856A';
-const COR_TERRACOTA_TITULO = '#8B5E4A';
-const COR_TERRACOTA_TEXTO = '#B5856A';
+
 
 // ─── Tipo da navegação raiz (Bottom Tabs) ────────────────────────────────────
 type RootTabNavigation = BottomTabNavigationProp<{
@@ -30,6 +26,7 @@ type RootTabNavigation = BottomTabNavigationProp<{
   TarefasTab: undefined;
   ChatTab: undefined;
   HomeTab: undefined;
+  PerfilTab: undefined;
 }>;
 
 // ─── Utilitário de data em português ──────────────────────────────────────────
@@ -92,8 +89,7 @@ export default function HomeScreen() {
   const { nomeUsuario, entradas } = useShello();
   const navigation = useNavigation<RootTabNavigation>();
 
-  // Animação de pressão no FAB
-  const escalaFab = useRef(new Animated.Value(1)).current;
+
 
   const dataFormatada = formatarDataPtBR();
   const saudacao = obterSaudacao();
@@ -103,27 +99,10 @@ export default function HomeScreen() {
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
-  const handleFabPressIn = useCallback(() => {
-    Animated.spring(escalaFab, {
-      toValue: 0.88,
-      useNativeDriver: true,
-      speed: 30,
-      bounciness: 4,
-    }).start();
-  }, [escalaFab]);
-
-  const handleFabPressOut = useCallback(() => {
-    Animated.spring(escalaFab, {
-      toValue: 1,
-      useNativeDriver: true,
-      speed: 20,
-      bounciness: 6,
-    }).start();
-  }, [escalaFab]);
-
   const irParaDiario = useCallback(() => navigation.navigate('DiarioTab'), [navigation]);
   const irParaTarefas = useCallback(() => navigation.navigate('TarefasTab'), [navigation]);
   const irParaChat = useCallback(() => navigation.navigate('ChatTab'), [navigation]);
+  const irParaPerfil = useCallback(() => navigation.navigate('PerfilTab'), [navigation]);
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -167,77 +146,97 @@ export default function HomeScreen() {
 
         {/* ── Seção de atalhos rápidos ── */}
         <Text style={estilos.secaoTitulo}>Atalhos rápidos</Text>
-        <View style={estilos.filhaAtalhos}>
-          {/* Card — Diário */}
-          <TouchableOpacity
-            style={[estilos.cardAtalho, estilos.cardAtalhoVerde]}
-            onPress={irParaDiario}
-            activeOpacity={0.85}
-            accessible
-            accessibilityLabel="Ir para o Diário"
-            accessibilityRole="button"
-          >
-            <View style={[estilos.circuloIcone, estilos.circuloIconeVerde]}>
-              <Feather
-                name="book-open"
-                size={24}
-                color={ShelloTema.cores.marca}
-              />
-            </View>
-            <Text style={estilos.atalhoTitulo}>Diário</Text>
-            <Text style={estilos.atalhoSubtexto}>Registre seus pensamentos</Text>
-          </TouchableOpacity>
+        <View style={estilos.gridAtalhos}>
+          <View style={estilos.filhaAtalhos}>
+            {/* Card — Diário */}
+            <TouchableOpacity
+              style={[estilos.cardAtalho, estilos.cardAtalhoVerde]}
+              onPress={irParaDiario}
+              activeOpacity={0.85}
+              accessible
+              accessibilityLabel="Ir para o Diário"
+              accessibilityRole="button"
+            >
+              <View style={[estilos.circuloIcone, estilos.circuloIconeVerde]}>
+                <Feather
+                  name="book-open"
+                  size={24}
+                  color={ShelloTema.cores.marca}
+                />
+              </View>
+              <Text style={estilos.atalhoTitulo}>Diário</Text>
+              <Text style={estilos.atalhoSubtexto}>Registre seus pensamentos</Text>
+            </TouchableOpacity>
 
-          {/* Card — Tarefas */}
-          <TouchableOpacity
-            style={[estilos.cardAtalho, estilos.cardAtalhoTerracota]}
-            onPress={irParaTarefas}
-            activeOpacity={0.85}
-            accessible
-            accessibilityLabel="Ir para Tarefas"
-            accessibilityRole="button"
-          >
-            <View style={[estilos.circuloIcone, estilos.circuloIconeTerracota]}>
-              <Feather
-                name="check-square"
-                size={24}
-                color={COR_TERRACOTA_ICONE}
-              />
-            </View>
-            <Text style={[estilos.atalhoTitulo, estilos.atalhoTituloTerracota]}>
-              Tarefas
-            </Text>
-            <Text style={estilos.atalhoSubtexto}>Organize sua rotina</Text>
-          </TouchableOpacity>
+            {/* Card — Tarefas */}
+            <TouchableOpacity
+              style={[estilos.cardAtalho, estilos.cardAtalhoTerracota]}
+              onPress={irParaTarefas}
+              activeOpacity={0.85}
+              accessible
+              accessibilityLabel="Ir para Tarefas"
+              accessibilityRole="button"
+            >
+              <View style={[estilos.circuloIcone, estilos.circuloIconeTerracota]}>
+                <Feather
+                  name="check-square"
+                  size={24}
+                  color={ShelloTema.cores.terracotaIcone}
+                />
+              </View>
+              <Text style={[estilos.atalhoTitulo, estilos.atalhoTituloTerracota]}>
+                Tarefas
+              </Text>
+              <Text style={estilos.atalhoSubtexto}>Organize sua rotina</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={estilos.filhaAtalhos}>
+            {/* Card — Chat */}
+            <TouchableOpacity
+              style={[estilos.cardAtalho, estilos.cardAtalhoPessego]}
+              onPress={irParaChat}
+              activeOpacity={0.85}
+              accessible
+              accessibilityLabel="Conversar com o Shello"
+              accessibilityRole="button"
+            >
+              <View style={[estilos.circuloIcone, estilos.circuloIconePessego]}>
+                <Feather
+                  name="message-circle"
+                  size={24}
+                  color={ShelloTema.cores.pessegoDark}
+                />
+              </View>
+              <Text style={[estilos.atalhoTitulo, estilos.atalhoTituloPessego]}>
+                Falar com Shello
+              </Text>
+              <Text style={estilos.atalhoSubtexto}>Desabafe e tire dúvidas</Text>
+            </TouchableOpacity>
+
+            {/* Card — Perfil */}
+            <TouchableOpacity
+              style={[estilos.cardAtalho, estilos.cardAtalhoPerfil]}
+              onPress={irParaPerfil}
+              activeOpacity={0.85}
+              accessible
+              accessibilityLabel="Ir para Perfil"
+              accessibilityRole="button"
+            >
+              <View style={[estilos.circuloIcone, estilos.circuloIconePerfil]}>
+                <Feather
+                  name="user"
+                  size={24}
+                  color={ShelloTema.cores.marca}
+                />
+              </View>
+              <Text style={estilos.atalhoTitulo}>Meu Perfil</Text>
+              <Text style={estilos.atalhoSubtexto}>Sua evolução e memórias</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Espaço inferior para o FAB não cobrir conteúdo */}
-        <View style={estilos.espacamentoInferior} />
       </ScrollView>
-
-      {/* ── FAB com logo da tartaruga ── */}
-      <Animated.View
-        style={[estilos.fabWrapper, { transform: [{ scale: escalaFab }] }]}
-      >
-        <TouchableOpacity
-          style={estilos.fab}
-          onPress={irParaChat}
-          onPressIn={handleFabPressIn}
-          onPressOut={handleFabPressOut}
-          activeOpacity={1}
-          accessible
-          accessibilityLabel="Abrir chat com Shello"
-          accessibilityRole="button"
-        >
-          <Image
-            source={require('../../assets/logoshello.jpeg')}
-            style={estilos.fabImagem}
-            resizeMode="cover"
-          />
-        </TouchableOpacity>
-        {/* Ponto laranja de notificação */}
-        <View style={estilos.fabNotificacao} />
-      </Animated.View>
     </SafeAreaView>
   );
 }
@@ -327,7 +326,7 @@ const estilos = StyleSheet.create({
   },
   textoBadgeTerracota: {
     fontSize: ShelloTema.tipografia.tamanhos.minusculo,
-    color: COR_TERRACOTA_TEXTO,
+    color: ShelloTema.cores.terracotaTexto,
     fontWeight: ShelloTema.tipografia.pesos.medio,
     letterSpacing: 0.2,
   },
@@ -383,46 +382,31 @@ const estilos = StyleSheet.create({
     marginBottom: 4,
   },
   atalhoTituloTerracota: {
-    color: COR_TERRACOTA_TITULO,
+    color: ShelloTema.cores.terracotaTitulo,
   },
   atalhoSubtexto: {
     fontSize: ShelloTema.tipografia.tamanhos.minusculo,
     color: ShelloTema.cores.textoS,
     lineHeight: 16,
   },
-
-  // ── FAB com logo ──
-  fabWrapper: {
-    position: 'absolute',
-    bottom: ShelloTema.espacamento.xl,
-    right: ShelloTema.espacamento.lg,
+  gridAtalhos: {
+    gap: ShelloTema.espacamento.md,
   },
-  fab: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    overflow: 'hidden',
-    ...ShelloTema.sombra.media,
+  cardAtalhoPessego: {
+    backgroundColor: ShelloTema.cores.pessego,
   },
-  fabImagem: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+  cardAtalhoPerfil: {
+    backgroundColor: ShelloTema.cores.superficie,
+    borderWidth: 1,
+    borderColor: ShelloTema.cores.marcaClaro + '80',
   },
-  fabNotificacao: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
-    width: 13,
-    height: 13,
-    borderRadius: 6.5,
-    backgroundColor: '#E8895A',
-    borderWidth: 2,
-    borderColor: ShelloTema.cores.fundo,
+  circuloIconePessego: {
+    backgroundColor: 'rgba(160, 90, 68, 0.12)',
   },
-
-  // Espaço para o FAB não cobrir conteúdo
-  espacamentoInferior: {
-    height: 90,
+  circuloIconePerfil: {
+    backgroundColor: 'rgba(94, 131, 106, 0.1)',
+  },
+  atalhoTituloPessego: {
+    color: ShelloTema.cores.pessegoDark,
   },
 });

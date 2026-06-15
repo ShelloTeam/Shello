@@ -27,10 +27,9 @@ import { Feather } from '@expo/vector-icons';
 import { ShelloTema } from '../styles/tema';
 import { useShello } from '../contexts/ShelloContext';
 import { Tarefa, Rotina } from '../types';
+import DialogShello from '../components/DialogShello';
 
 // ─── Paleta extra ──────────────────────────────────────────────────────────────
-const COR_PESSEGO = '#F2D4C8';          // fundo do botão '+' (terracota claro)
-const COR_PESSEGO_ICONE = '#A05A44';    // ícone dentro do botão '+' (marrom sage)
 const COR_ROTINA_MANHA = '#EEF4F0';    // verde-creme para rotina manhã
 const COR_ROTINA_TARDE = '#EADCD6';    // salmão/terracota para rotina tarde
 const COR_ROTINA_NOITE = '#E8E4F0';    // lavanda suave para rotina noite
@@ -106,9 +105,10 @@ const ROTINAS_PADRAO: Rotina[] = [
 interface ItemTarefaProps {
   tarefa: Tarefa;
   onAlternar: (id: string) => void;
+  onExcluir: (id: string) => void;
 }
 
-function ItemTarefa({ tarefa, onAlternar }: ItemTarefaProps): React.JSX.Element {
+function ItemTarefa({ tarefa, onAlternar, onExcluir }: ItemTarefaProps): React.JSX.Element {
   const opacidade = useRef(new Animated.Value(tarefa.concluida ? 0.5 : 1)).current;
   const escala    = useRef(new Animated.Value(1)).current;
 
@@ -130,65 +130,83 @@ function ItemTarefa({ tarefa, onAlternar }: ItemTarefaProps): React.JSX.Element 
   const atrasada = estaAtrasada(tarefa);
 
   return (
-    <Animated.View
-      style={[
-        estilos.cardTarefa,
-        atrasada && estilos.cardTarefaAtrasada,
-        { opacity: opacidade },
-      ]}
+    <TouchableOpacity
+      activeOpacity={0.85}
+      onLongPress={() => onExcluir(tarefa.id)}
+      delayLongPress={600}
     >
-      {/* Checkbox circular com micro-pulso */}
-      <Animated.View style={{ transform: [{ scale: escala }] }}>
-        <TouchableOpacity
-          onPress={handlePress}
-          style={[estilos.checkbox, tarefa.concluida && estilos.checkboxConcluido]}
-          activeOpacity={0.7}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: tarefa.concluida }}
-        >
-          {tarefa.concluida && (
-            <Feather name="check" size={13} color={ShelloTema.cores.superficie} />
-          )}
-        </TouchableOpacity>
-      </Animated.View>
+      <Animated.View
+        style={[
+          estilos.cardTarefa,
+          atrasada && estilos.cardTarefaAtrasada,
+          { opacity: opacidade },
+        ]}
+      >
+        {/* Checkbox circular com micro-pulso */}
+        <Animated.View style={{ transform: [{ scale: escala }] }}>
+          <TouchableOpacity
+            onPress={handlePress}
+            style={[estilos.checkbox, tarefa.concluida && estilos.checkboxConcluido]}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: tarefa.concluida }}
+          >
+            {tarefa.concluida && (
+              <Feather name="check" size={13} color={ShelloTema.cores.superficie} />
+            )}
+          </TouchableOpacity>
+        </Animated.View>
 
-      {/* Conteúdo */}
-      <View style={estilos.tarefaConteudo}>
-        <Text
-          style={[
-            estilos.tarefaTitulo,
-            tarefa.concluida && estilos.tarefaTituloConcluida,
-          ]}
-          numberOfLines={2}
-        >
-          {tarefa.titulo}
-        </Text>
+        {/* Conteúdo */}
+        <View style={estilos.tarefaConteudo}>
+          <Text
+            style={[
+              estilos.tarefaTitulo,
+              tarefa.concluida && estilos.tarefaTituloConcluida,
+            ]}
+            numberOfLines={2}
+          >
+            {tarefa.titulo}
+          </Text>
 
-        <View style={estilos.tarefaRodape}>
-          {atrasada && (
-            <View style={estilos.badgeAtrasada}>
-              <Feather name="alert-circle" size={11} color={ShelloTema.cores.erro} />
-              <Text style={estilos.badgeAtrasadaTexto}>Atrasada</Text>
-            </View>
-          )}
+          {tarefa.descricao ? (
+            <Text
+              style={[
+                estilos.tarefaDescricao,
+                tarefa.concluida && estilos.tarefaDescricaoConcluida,
+              ]}
+              numberOfLines={2}
+            >
+              {tarefa.descricao}
+            </Text>
+          ) : null}
 
-          {tarefa.data && !atrasada && !tarefa.concluida && (
-            <View style={estilos.badgeData}>
-              <Feather name="calendar" size={11} color={ShelloTema.cores.marca} />
-              <Text style={estilos.badgeDataTexto}>{formatarData(tarefa.data)}</Text>
-            </View>
-          )}
+          <View style={estilos.tarefaRodape}>
+            {atrasada && (
+              <View style={estilos.badgeAtrasada}>
+                <Feather name="alert-circle" size={11} color={ShelloTema.cores.erro} />
+                <Text style={estilos.badgeAtrasadaTexto}>Atrasada</Text>
+              </View>
+            )}
 
-          {tarefa.concluida && (
-            <View style={estilos.badgeConcluida}>
-              <Feather name="check-circle" size={11} color={ShelloTema.cores.marca} />
-              <Text style={estilos.badgeConcluidaTexto}>Concluída</Text>
-            </View>
-          )}
+            {tarefa.data && !atrasada && !tarefa.concluida && (
+              <View style={estilos.badgeData}>
+                <Feather name="calendar" size={11} color={ShelloTema.cores.marca} />
+                <Text style={estilos.badgeDataTexto}>{formatarData(tarefa.data)}</Text>
+              </View>
+            )}
+
+            {tarefa.concluida && (
+              <View style={estilos.badgeConcluida}>
+                <Feather name="check-circle" size={11} color={ShelloTema.cores.marca} />
+                <Text style={estilos.badgeConcluidaTexto}>Concluída</Text>
+              </View>
+            )}
+          </View>
         </View>
-      </View>
-    </Animated.View>
+      </Animated.View>
+    </TouchableOpacity>
   );
 }
 
@@ -197,7 +215,7 @@ function ItemTarefa({ tarefa, onAlternar }: ItemTarefaProps): React.JSX.Element 
 interface ModalNovaTarefaProps {
   visivel:    boolean;
   onFechar:   () => void;
-  onAdicionar: (titulo: string, data?: string) => void;
+  onAdicionar: (titulo: string, descricao?: string, data?: string) => void;
 }
 
 const formatarDataInput = (texto: string) => {
@@ -223,6 +241,7 @@ function ModalNovaTarefa({
   onAdicionar,
 }: ModalNovaTarefaProps): React.JSX.Element {
   const [titulo,    setTitulo]    = useState('');
+  const [descricao, setDescricao] = useState('');
   const [dataTexto, setDataTexto] = useState('');
   const [erroData,  setErroData]  = useState('');
 
@@ -288,6 +307,7 @@ function ModalNovaTarefa({
 
   const handleFechar = useCallback(() => {
     setTitulo('');
+    setDescricao('');
     setDataTexto('');
     setErroData('');
     onFechar();
@@ -311,13 +331,15 @@ function ModalNovaTarefa({
       dataISO = resultado.dataISO;
     }
 
-    onAdicionar(tituloTrimado, dataISO);
+    const descTrimada = descricao.trim() ? descricao.trim() : undefined;
+    onAdicionar(tituloTrimado, descTrimada, dataISO);
 
     setTitulo('');
+    setDescricao('');
     setDataTexto('');
     setErroData('');
     onFechar();
-  }, [titulo, dataTexto, onAdicionar, onFechar]);
+  }, [titulo, descricao, dataTexto, onAdicionar, onFechar]);
 
   const podeCriar = titulo.trim().length > 0;
 
@@ -359,6 +381,20 @@ function ModalNovaTarefa({
             autoFocus
             returnKeyType="next"
             maxLength={100}
+          />
+
+          {/* Campo: Descrição */}
+          <Text style={estilos.modalLabel}>
+            Descrição <Text style={estilos.modalLabelOpcional}>(opcional)</Text>
+          </Text>
+          <TextInput
+            style={[estilos.modalInput, { minHeight: 60 }]}
+            value={descricao}
+            onChangeText={setDescricao}
+            placeholder="Adicione detalhes sobre sua tarefa..."
+            placeholderTextColor={ShelloTema.cores.textoS}
+            multiline
+            maxLength={250}
           />
 
           {/* Campo: Data opcional */}
@@ -487,8 +523,9 @@ function EstadoVazio(): React.JSX.Element {
 // ─── Tela Principal: TelaTarefas ───────────────────────────────────────────────
 
 export default function TelaTarefas(): React.JSX.Element {
-  const { tarefas, rotinas, adicionarTarefa, alternarTarefa } = useShello();
+  const { tarefas, rotinas, adicionarTarefa, alternarTarefa, removerTarefa } = useShello();
   const [modalVisivel, setModalVisivel] = useState(false);
+  const [tarefaExcluir, setTarefaExcluir] = useState<string | null>(null);
 
   // Decide quais rotinas exibir: reais do contexto ou fallback padrão
   const rotinasExibidas = useMemo<Rotina[]>(
@@ -501,8 +538,8 @@ export default function TelaTarefas(): React.JSX.Element {
   const tarefasConcluidas = useMemo(() => tarefas.filter((t) => t.concluida),  [tarefas]);
 
   const handleAdicionarTarefa = useCallback(
-    async (titulo: string, data?: string) => {
-      await adicionarTarefa(titulo, undefined, data);
+    async (titulo: string, descricao?: string, data?: string) => {
+      await adicionarTarefa(titulo, descricao, data);
     },
     [adicionarTarefa]
   );
@@ -513,6 +550,18 @@ export default function TelaTarefas(): React.JSX.Element {
     },
     [alternarTarefa]
   );
+
+  const handleExcluirTarefa = useCallback(async () => {
+    if (tarefaExcluir) {
+      try {
+        await removerTarefa(tarefaExcluir);
+      } catch (e) {
+        console.error('Erro ao excluir tarefa:', e);
+      } finally {
+        setTarefaExcluir(null);
+      }
+    }
+  }, [tarefaExcluir, removerTarefa]);
 
   return (
     <SafeAreaView style={estilos.safeArea}>
@@ -552,7 +601,7 @@ export default function TelaTarefas(): React.JSX.Element {
               accessibilityLabel="Adicionar nova tarefa"
               accessibilityRole="button"
             >
-              <Feather name="plus" size={20} color={COR_PESSEGO_ICONE} />
+              <Feather name="plus" size={20} color={ShelloTema.cores.pessegoDark} />
             </TouchableOpacity>
           </View>
 
@@ -567,6 +616,7 @@ export default function TelaTarefas(): React.JSX.Element {
                   key={tarefa.id}
                   tarefa={tarefa}
                   onAlternar={handleAlternarTarefa}
+                  onExcluir={setTarefaExcluir}
                 />
               ))}
 
@@ -595,6 +645,7 @@ export default function TelaTarefas(): React.JSX.Element {
                   key={tarefa.id}
                   tarefa={tarefa}
                   onAlternar={handleAlternarTarefa}
+                  onExcluir={setTarefaExcluir}
                 />
               ))}
             </View>
@@ -626,6 +677,18 @@ export default function TelaTarefas(): React.JSX.Element {
         visivel={modalVisivel}
         onFechar={() => setModalVisivel(false)}
         onAdicionar={handleAdicionarTarefa}
+      />
+
+      {/* ── Dialog de exclusão ───────────────────────────────────────── */}
+      <DialogShello
+        visible={tarefaExcluir !== null}
+        onClose={() => setTarefaExcluir(null)}
+        title="Excluir Tarefa"
+        message="Deseja mesmo remover esta tarefa de sua jornada?"
+        confirmLabel="Excluir"
+        cancelLabel="Cancelar"
+        onConfirm={handleExcluirTarefa}
+        isDestructive
       />
     </SafeAreaView>
   );
@@ -710,7 +773,7 @@ const estilos = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: COR_PESSEGO,
+    backgroundColor: ShelloTema.cores.pessego,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#C08070',
@@ -822,6 +885,16 @@ const estilos = StyleSheet.create({
   },
   tarefaTituloConcluida: {
     color: ShelloTema.cores.textoS,
+    textDecorationLine: 'line-through',
+  },
+  tarefaDescricao: {
+    fontSize: 13,
+    color: ShelloTema.cores.textoS,
+    lineHeight: 18,
+    marginTop: 2,
+  },
+  tarefaDescricaoConcluida: {
+    color: '#A5B0A9',
     textDecorationLine: 'line-through',
   },
   tarefaRodape: {
