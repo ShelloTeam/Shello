@@ -11,8 +11,6 @@ import {
   TouchableOpacity,
   TextInput,
   Animated,
-  Modal,
-  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -200,6 +198,292 @@ const OPCOES_FORMALIDADE: OpcaoFormalidade[] = [
   { valor: 'alta', rotulo: 'Formal' },
 ];
 
+interface ModalNomeSalvoProps {
+  nome: string;
+  aoFechar: () => void;
+}
+
+function ModalNomeSalvo({ nome, aoFechar }: ModalNomeSalvoProps) {
+  const escala = useRef(new Animated.Value(0.85)).current;
+  const opacidade = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(escala, {
+        toValue: 1,
+        useNativeDriver: true,
+        damping: 14,
+        stiffness: 180,
+      }),
+      Animated.timing(opacidade, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  const fechar = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(escala, {
+        toValue: 0.85,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacidade, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start(() => aoFechar());
+  }, [aoFechar, escala, opacidade]);
+
+  return (
+    <Animated.View style={[estilosModal.overlay, { opacity: opacidade }]}>
+      <Animated.View style={[estilosModal.caixa, { transform: [{ scale: escala }] }]}>
+        {/* Ícone */}
+        <View style={estilosModal.iconeWrapper}>
+          <Feather name="check-circle" size={36} color={ShelloTema.cores.marca} />
+        </View>
+
+        {/* Título */}
+        <Text style={estilosModal.titulo}>Nome salvo!</Text>
+
+        {/* Mensagem */}
+        <Text style={estilosModal.mensagem}>
+          O Shello vai te chamar de{' '}
+          <Text style={estilosModal.destaque}>"{nome}"</Text>
+          {' '}agora. 🌿
+        </Text>
+
+        {/* Botão */}
+        <TouchableOpacity
+          style={estilosModal.botao}
+          onPress={fechar}
+          activeOpacity={0.85}
+        >
+          <Text style={estilosModal.botaoTexto}>Entendido</Text>
+        </TouchableOpacity>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
+const estilosModal = StyleSheet.create({
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 999,
+  },
+  caixa: {
+    backgroundColor: ShelloTema.cores.superficie,
+    borderRadius: ShelloTema.forma.bordaMedia,
+    padding: ShelloTema.espacamento.xl,
+    marginHorizontal: ShelloTema.espacamento.xl,
+    alignItems: 'center',
+    ...ShelloTema.sombra.media,
+  },
+  iconeWrapper: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: ShelloTema.cores.marcaClaro,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: ShelloTema.espacamento.md,
+  },
+  titulo: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: ShelloTema.cores.textoP,
+    marginBottom: ShelloTema.espacamento.sm,
+    fontFamily: 'serif',
+  },
+  mensagem: {
+    fontSize: 15,
+    color: ShelloTema.cores.textoS,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: ShelloTema.espacamento.lg,
+  },
+  destaque: {
+    color: ShelloTema.cores.marca,
+    fontWeight: '700',
+  },
+  botao: {
+    backgroundColor: ShelloTema.cores.marca,
+    borderRadius: ShelloTema.forma.bordaPill,
+    paddingVertical: ShelloTema.espacamento.md,
+    paddingHorizontal: ShelloTema.espacamento.xl,
+    width: '100%',
+    alignItems: 'center',
+  },
+  botaoTexto: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: ShelloTema.cores.superficie,
+  },
+});
+
+function ModalErro({ aoFechar }: { aoFechar: () => void }) {
+  const escala = useRef(new Animated.Value(0.85)).current;
+  const opacidade = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(escala, { toValue: 1, useNativeDriver: true, damping: 14, stiffness: 180 }),
+      Animated.timing(opacidade, { toValue: 1, duration: 200, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
+  const fechar = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(escala, { toValue: 0.85, duration: 150, useNativeDriver: true }),
+      Animated.timing(opacidade, { toValue: 0, duration: 150, useNativeDriver: true }),
+    ]).start(() => aoFechar());
+  }, [aoFechar, escala, opacidade]);
+
+  return (
+    <Animated.View style={[estilosModal.overlay, { opacity: opacidade }]}>
+      <Animated.View style={[estilosModal.caixa, { transform: [{ scale: escala }] }]}>
+        <View style={estilosModalErro.iconeWrapper}>
+          <Feather name="alert-circle" size={36} color="#8B5E3C" />
+        </View>
+        <Text style={estilosModal.titulo}>Ops!</Text>
+        <Text style={estilosModal.mensagem}>
+          Não foi possível salvar.{'\n'}Tente novamente em instantes.
+        </Text>
+        <TouchableOpacity style={estilosModalErro.botao} onPress={fechar} activeOpacity={0.85}>
+          <Text style={estilosModal.botaoTexto}>Tentar novamente</Text>
+        </TouchableOpacity>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
+const estilosModalErro = StyleSheet.create({
+  iconeWrapper: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: ShelloTema.cores.terracota,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: ShelloTema.espacamento.md,
+  },
+  botao: {
+    backgroundColor: '#8B5E3C',
+    borderRadius: ShelloTema.forma.bordaPill,
+    paddingVertical: ShelloTema.espacamento.md,
+    paddingHorizontal: ShelloTema.espacamento.xl,
+    width: '100%',
+    alignItems: 'center',
+  },
+});
+
+interface ModalConfirmarSaidaProps {
+  aoConfirmar: () => void;
+  aoCancelar: () => void;
+}
+
+function ModalConfirmarSaida({ aoConfirmar, aoCancelar }: ModalConfirmarSaidaProps) {
+  const escala = useRef(new Animated.Value(0.85)).current;
+  const opacidade = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(escala, { toValue: 1, useNativeDriver: true, damping: 14, stiffness: 180 }),
+      Animated.timing(opacidade, { toValue: 1, duration: 200, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
+  const animar = useCallback((callback: () => void) => {
+    Animated.parallel([
+      Animated.timing(escala, { toValue: 0.85, duration: 150, useNativeDriver: true }),
+      Animated.timing(opacidade, { toValue: 0, duration: 150, useNativeDriver: true }),
+    ]).start(() => callback());
+  }, [escala, opacidade]);
+
+  return (
+    <Animated.View style={[estilosModal.overlay, { opacity: opacidade }]}>
+      <Animated.View style={[estilosModal.caixa, { transform: [{ scale: escala }] }]}>
+        <View style={estilosModalSaida.iconeWrapper}>
+          <Feather name="log-out" size={36} color="#8B5E3C" />
+        </View>
+
+        <Text style={estilosModal.titulo}>Sair da conta</Text>
+
+        <Text style={estilosModal.mensagem}>
+          Deseja mesmo sair?{'\n'}Você precisará fazer login novamente.
+        </Text>
+
+        <TouchableOpacity
+          style={estilosModalSaida.botaoSair}
+          onPress={() => animar(aoConfirmar)}
+          activeOpacity={0.85}
+        >
+          <Feather name="log-out" size={16} color="#FFF" style={estilosModalSaida.iconeBtn} />
+          <Text style={estilosModal.botaoTexto}>Sim, sair</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={estilosModalSaida.botaoCancelar}
+          onPress={() => animar(aoCancelar)}
+          activeOpacity={0.85}
+        >
+          <Text style={estilosModalSaida.botaoCancelarTexto}>Cancelar</Text>
+        </TouchableOpacity>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
+const estilosModalSaida = StyleSheet.create({
+  iconeBtn: {
+    marginRight: 8
+  },
+  iconeWrapper: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: ShelloTema.cores.terracota,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: ShelloTema.espacamento.md,
+  },
+  botaoSair: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    backgroundColor: '#8B5E3C',
+    borderRadius: ShelloTema.forma.bordaPill,
+    paddingVertical: ShelloTema.espacamento.md,
+    paddingHorizontal: ShelloTema.espacamento.xl,
+    width: '100%',
+    marginBottom: ShelloTema.espacamento.sm,
+  },
+  botaoCancelar: {
+    borderWidth: 1.5,
+    borderColor: ShelloTema.cores.textoS,
+    borderRadius: ShelloTema.forma.bordaPill,
+    paddingVertical: ShelloTema.espacamento.md,
+    paddingHorizontal: ShelloTema.espacamento.xl,
+    width: '100%',
+    alignItems: 'center',
+  },
+  botaoCancelarTexto: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: ShelloTema.cores.textoS,
+  },
+});
+
 // ─── Componente principal: TelaPerfil ────────────────────────────────────────
 
 export default function TelaPerfil() {
@@ -219,6 +503,9 @@ export default function TelaPerfil() {
     nomeUsuario || dadosOnboarding?.nome.split(' ')[0] || ''
   );
   const [salvandoNome, setSalvandoNome] = useState(false);
+  const [modalSalvo, setModalSalvo] = useState<string | null>(null);
+  const [modalConfirmarSaida, setModalConfirmarSaida] = useState(false);
+  const [modalErro, setModalErro] = useState(false);
   const [emailReal, setEmailReal] = useState('');
   const [nomeReal, setNomeReal] = useState('');
   const [modalMemoriasVisivel, setModalMemoriasVisivel] = useState(false);
@@ -293,42 +580,17 @@ export default function TelaPerfil() {
 
       definirUsuario(nomeTrimado, true);
       await recarregarMemorias();
-      setDialogConfig({
-        visible: true,
-        title: 'Nome salvo',
-        message: `O Shello vai te chamar de "${nomeTrimado}" agora.`,
-        confirmLabel: 'Ok',
-        onConfirm: () => {},
-      });
+      setModalSalvo(nomeTrimado);
     } catch {
-      setDialogConfig({
-        visible: true,
-        title: 'Erro',
-        message: 'Não foi possível salvar. Tente novamente.',
-        confirmLabel: 'Ok',
-        onConfirm: () => {},
-      });
+      setModalErro(true);
     } finally {
       setSalvandoNome(false);
     }
   }, [nomeReferencia, definirUsuario, memorias, recarregarMemorias]);
 
   const handleSair = useCallback(() => {
-    setDialogConfig({
-      visible: true,
-      title: 'Sair da conta',
-      message: 'Deseja mesmo sair?',
-      confirmLabel: 'Sair',
-      isDestructive: true,
-      onConfirm: async () => {
-        try {
-          await sair();
-        } catch (erro) {
-          console.error('Erro ao sair:', erro);
-        }
-      },
-    });
-  }, [sair]);
+    setModalConfirmarSaida(true);
+  }, []);
 
   const primeiroNome = nomeReferencia || nomeReal.split(' ')[0] || nomeUsuario.split(' ')[0] || 'Usuário';
   const emailExibido = emailReal || '…';
@@ -574,88 +836,32 @@ export default function TelaPerfil() {
         <View style={estilos.espacamentoInferior} />
       </ScrollView>
 
-      <DialogShello
-        visible={dialogConfig.visible}
-        onClose={() => setDialogConfig(prev => ({ ...prev, visible: false }))}
-        title={dialogConfig.title}
-        message={dialogConfig.message}
-        confirmLabel={dialogConfig.confirmLabel}
-        onConfirm={dialogConfig.onConfirm}
-        isDestructive={dialogConfig.isDestructive}
-      />
+      {/* Modal de nome salvo */}
+      {modalSalvo && (
+        <ModalNomeSalvo
+          nome={modalSalvo}
+          aoFechar={() => setModalSalvo(null)}
+        />
+      )}
 
-      <Modal
-        visible={modalMemoriasVisivel}
-        animationType="slide"
-        onRequestClose={() => {
-          setModalMemoriasVisivel(false);
-          setBuscaMemoria('');
-        }}
-      >
-        <SafeAreaView style={estilos.modalAreaSegura}>
-          {/* Cabeçalho do modal */}
-          <View style={estilos.modalCabecalho}>
-            <TouchableOpacity
-              onPress={() => {
-                setModalMemoriasVisivel(false);
-                setBuscaMemoria('');
-              }}
-              style={estilos.modalBotaoFechar}
-            >
-              <Feather name="chevron-left" size={24} color={ShelloTema.cores.textoP} />
-            </TouchableOpacity>
-            <Text style={estilos.modalTitulo}>Memórias do Shello</Text>
-            <View style={{ width: 40 }} /> {/* Espaçador para alinhar título */}
-          </View>
+      {modalErro && (
+        <ModalErro aoFechar={() => setModalErro(false)} />
+      )}
 
-          <View style={estilos.modalConteudo}>
-            <Text style={estilos.modalSubtitulo}>
-              Todas as informações que o Shello guardou para personalizar a experiência.
-            </Text>
+      {modalConfirmarSaida && (
+        <ModalConfirmarSaida
+          aoConfirmar={async () => {
+            setModalConfirmarSaida(false);
+            try {
+              await sair();
+            } catch (erro) {
+              console.error('Erro ao sair:', erro);
+            }
+          }}
+          aoCancelar={() => setModalConfirmarSaida(false)}
+        />
+      )}
 
-            {/* Input de busca no modal */}
-            <View style={estilos.modalContainerBusca}>
-              <Feather name="search" size={18} color={ShelloTema.cores.textoS} style={estilos.modalIconeBusca} />
-              <TextInput
-                style={estilos.modalInputBusca}
-                placeholder="Filtrar memórias..."
-                placeholderTextColor={ShelloTema.cores.textoS}
-                value={buscaMemoria}
-                onChangeText={setBuscaMemoria}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              {buscaMemoria.length > 0 && (
-                <TouchableOpacity onPress={() => setBuscaMemoria('')}>
-                  <Feather name="x" size={16} color={ShelloTema.cores.textoS} />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* FlatList virtualizada */}
-            <FlatList
-              data={memoriasModalFiltradas}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <CardMemoria
-                  memoria={item}
-                  aoRemover={handleRemoverMemoria}
-                />
-              )}
-              contentContainerStyle={estilos.modalListaConteudo}
-              showsVerticalScrollIndicator={false}
-              ListEmptyComponent={
-                <View style={estilos.modalListaVazia}>
-                  <Feather name="search" size={32} color={ShelloTema.cores.textoS} />
-                  <Text style={estilos.modalListaVaziaTexto}>
-                    Nenhuma memória corresponde à busca.
-                  </Text>
-                </View>
-              }
-            />
-          </View>
-        </SafeAreaView>
-      </Modal>
     </SafeAreaView>
   );
 }
