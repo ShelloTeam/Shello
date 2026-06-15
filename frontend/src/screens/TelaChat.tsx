@@ -23,16 +23,14 @@ import {
   Animated,
   ScrollView,
   Image,
-  Keyboard,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { ShelloTema } from '../styles/tema';
 import { useShello } from '../contexts/ShelloContext';
 import { MensagemChat, ExpressaoShello } from '../types';
 import api from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import DialogShello from '../components/DialogShello';
 
 const markdownEstilos = {
   body: {
@@ -227,10 +225,8 @@ function CardTarefaSugerida({ titulo, aoConfirmar, aoCancelar }: CardTarefaProps
 // ─── Tela Principal: TelaChat ─────────────────────────────────────────────────
 
 export default function TelaChat(): React.JSX.Element {
-  const { nomeUsuario, adicionarTarefaDeChat } = useShello();
-  const insets = useSafeAreaInsets();
+  const { nomeUsuario, adicionarTarefa } = useShello();
 
-  const [tecladoVisivel, setTecladoVisivel] = useState(false);
   const [mensagens, setMensagens] = useState<MensagemChat[]>([]);
   const [inputTexto, setInputTexto] = useState('');
   const [pensando, setPensando] = useState(false);
@@ -239,23 +235,8 @@ export default function TelaChat(): React.JSX.Element {
   const [confirmacaoTarefa, setConfirmacaoTarefa] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversaSavedLoaded, setConversaSavedLoaded] = useState(false);
-  const [modalNovoChat, setModalNovoChat] = useState(false);
 
   const flatListRef = useRef<FlatList<MensagemChat>>(null);
-
-  useEffect(() => {
-    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
-      setTecladoVisivel(true);
-    });
-    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
-      setTecladoVisivel(false);
-    });
-
-    return () => {
-      showSubscription.remove();
-      hideSubscription.remove();
-    };
-  }, []);
 
   // ── Carrega a conversa salva ao montar a tela ──────────────────────────────
   useEffect(() => {
@@ -318,7 +299,7 @@ export default function TelaChat(): React.JSX.Element {
     salvarConversa();
   }, [mensagens, conversationId, conversaSavedLoaded]);
 
-  const mostrarSugestoes = mensagens.length < 3 && !tecladoVisivel;
+  const mostrarSugestoes = mensagens.length < 3;
 
   // ── Enviar mensagem ──────────────────────────────────────────────────────
   const enviarMensagem = useCallback(
@@ -347,9 +328,6 @@ export default function TelaChat(): React.JSX.Element {
         const expressao = mapearExpressaoShello(data.response);
         setExpressaoAtual(expressao);
         setConversationId(data.conversation_id);
-        if (data.suggest_task) {
-          setTarefaSugerida(data.suggest_task);
-        }
 
         const msgIA: MensagemChat = {
           id: gerarId(),
@@ -384,7 +362,7 @@ export default function TelaChat(): React.JSX.Element {
   const confirmarTarefa = useCallback(async () => {
     if (!tarefaSugerida) return;
     try {
-      await adicionarTarefaDeChat(tarefaSugerida);
+      await adicionarTarefa(tarefaSugerida);
       setConfirmacaoTarefa(tarefaSugerida);
       // Auto-reset do feedback após 4 s para não ficar visível permanentemente
       setTimeout(() => setConfirmacaoTarefa(null), 4000);
@@ -393,7 +371,7 @@ export default function TelaChat(): React.JSX.Element {
     } finally {
       setTarefaSugerida(null);
     }
-  }, [tarefaSugerida, adicionarTarefaDeChat]);
+  }, [tarefaSugerida, adicionarTarefa]);
 
   // ── Novo chat ────────────────────────────────────────────────────────────
   const iniciarNovoChat = useCallback(() => {
@@ -420,48 +398,23 @@ export default function TelaChat(): React.JSX.Element {
   );
 
   return (
-    <SafeAreaView style={estilos.safeArea} edges={['top', 'left', 'right']}>
-      {/* ── Cabeçalho ──────────────────────────────────────────────────── */}
-      <View style={estilos.cabecalho}>
-        <View style={estilos.avatarWrapper}>
-          <AvatarShello expressao={expressaoAtual} tamanho={48} />
-          <View style={estilos.statusOnline} />
-        </View>
-        <View style={estilos.cabecalhoTextos}>
-          <Text style={estilos.cabecalhoNome}>Shello</Text>
-          <Text style={estilos.cabecalhoSubtitulo}>Seu Companheiro de IA</Text>
-        </View>
-        {/* Botão Novo Chat */}
-        <TouchableOpacity
-          style={estilos.botaoNovoChatHeader}
-          onPress={() => setModalNovoChat(true)}
-          activeOpacity={0.75}
-          accessibilityLabel="Iniciar nova conversa"
-          accessibilityRole="button"
-        >
-          <Feather name="refresh-cw" size={18} color={ShelloTema.cores.marca} />
-        </TouchableOpacity>
-      </View>
-
+    <SafeAreaView style={estilos.safeArea}>
       <KeyboardAvoidingView
         style={estilos.tela}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        {/* ── Lista de mensagens ────────────────────────────────────────── */}
-        <FlatList
-          ref={flatListRef}
-          data={mensagens}
-          keyExtractor={(item) => item.id}
-          renderItem={renderMensagem}
-          inverted
-          style={estilos.listaContainer}
-          contentContainerStyle={estilos.listaMensagens}
-          showsVerticalScrollIndicator={false}
-          ListHeaderComponent={
-            pensando ? <ShimmerLoader expressao={expressaoAtual} /> : null
-          }
-        />
+        {/* ── Cabeçalho ─────────────────────────────────────────────────── */}
+        <View style={estilos.cabecalho}>
+          <View style={estilos.avatarWrapper}>
+            <AvatarShello expressao={expressaoAtual} tamanho={48} />
+            <View style={estilos.statusOnline} />
+          </View>
+          <View style={estilos.cabecalhoTextos}>
+            <Text style={estilos.cabecalhoNome}>Shello</Text>
+            <Text style={estilos.cabecalhoSubtitulo}>Seu Companheiro de IA</Text>
+          </View>
+        </View>
 
         {/* ── Sugestões rápidas ─────────────────────────────────────────── */}
         {mostrarSugestoes && (
@@ -487,6 +440,20 @@ export default function TelaChat(): React.JSX.Element {
           </ScrollView>
         )}
 
+        {/* ── Lista de mensagens ────────────────────────────────────────── */}
+        <FlatList
+          ref={flatListRef}
+          data={mensagens}
+          keyExtractor={(item) => item.id}
+          renderItem={renderMensagem}
+          inverted
+          contentContainerStyle={estilos.listaMensagens}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            pensando ? <ShimmerLoader expressao={expressaoAtual} /> : null
+          }
+        />
+
         {/* ── Card de tarefa sugerida ───────────────────────────────────── */}
         {tarefaSugerida && (
           <CardTarefaSugerida
@@ -505,16 +472,8 @@ export default function TelaChat(): React.JSX.Element {
         )}
 
         {/* ── Barra de entrada ─────────────────────────────────────────── */}
-        <View style={[
-          estilos.barraEntrada,
-          {
-            paddingBottom: tecladoVisivel
-              ? ShelloTema.espacamento.sm
-              : Math.max(insets.bottom, ShelloTema.espacamento.md)
-          }
-        ]}>
+        <View style={estilos.barraEntrada}>
           <TextInput
-            testID="chat-input"
             style={estilos.input}
             value={inputTexto}
             onChangeText={setInputTexto}
@@ -525,7 +484,6 @@ export default function TelaChat(): React.JSX.Element {
             returnKeyType="default"
           />
           <TouchableOpacity
-            testID="chat-send-button"
             style={[
               estilos.botaoEnviar,
               (!inputTexto.trim() || pensando) && estilos.botaoEnviarDesabilitado,
@@ -538,17 +496,6 @@ export default function TelaChat(): React.JSX.Element {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-
-      {/* Dialog: confirmar novo chat */}
-      <DialogShello
-        visible={modalNovoChat}
-        onClose={() => setModalNovoChat(false)}
-        title="Nova Conversa"
-        message="O histórico desta conversa será apagado localmente. Deseja continuar?"
-        confirmLabel="Nova conversa"
-        cancelLabel="Cancelar"
-        onConfirm={iniciarNovoChat}
-      />
     </SafeAreaView>
   );
 }
@@ -558,7 +505,6 @@ export default function TelaChat(): React.JSX.Element {
 const estilos = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: ShelloTema.cores.fundo },
   tela: { flex: 1 },
-  listaContainer: { flex: 1 },
 
   // Cabeçalho
   cabecalho: {
@@ -597,14 +543,6 @@ const estilos = StyleSheet.create({
     letterSpacing: 0.2,
   },
   cabecalhoSubtitulo: { fontSize: 12, color: ShelloTema.cores.textoS, marginTop: 1 },
-  botaoNovoChatHeader: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: ShelloTema.cores.marcaClaro,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   contadorWrapper: { alignItems: 'center' },
   contadorTexto: { fontSize: 11, color: ShelloTema.cores.textoS, fontWeight: '500' },
   contadorTextoAlerta: { color: ShelloTema.cores.erro, fontWeight: '700' },

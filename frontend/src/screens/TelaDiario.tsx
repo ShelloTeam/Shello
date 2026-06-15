@@ -27,8 +27,6 @@ import { ShelloTema } from '../styles/tema';
 import { useShello } from '../contexts/ShelloContext';
 import { EntradaDiario } from '../types';
 import { DiarioStackParamList } from '../navigation/NavegacaoDiario';
-import DialogShello from '../components/DialogShello';
-import api from '../services/api';
 
 // ─── Constantes ────────────────────────────────────────────────────────────────
 
@@ -45,8 +43,7 @@ interface GrupoEntradas {
 
 type ItemLista =
   | { tipo: 'cabecalho'; titulo: string }
-  | { tipo: 'entrada'; entrada: EntradaDiario; iaLendo: boolean }
-  | { tipo: 'historico'; item: any };
+  | { tipo: 'entrada'; entrada: EntradaDiario; iaLendo: boolean };
 
 // ─── Utilitários ───────────────────────────────────────────────────────────────
 
@@ -157,10 +154,9 @@ interface CardEntradaProps {
   entrada: EntradaDiario;
   iaLendo: boolean;
   onPress: () => void;
-  onExcluir: (id: string) => void;
 }
 
-function CardEntrada({ entrada, iaLendo, onPress, onExcluir }: CardEntradaProps) {
+function CardEntrada({ entrada, iaLendo, onPress }: CardEntradaProps) {
   const preview = entrada.conteudo.slice(0, 80) +
     (entrada.conteudo.length > 80 ? '...' : '');
 
@@ -168,8 +164,6 @@ function CardEntrada({ entrada, iaLendo, onPress, onExcluir }: CardEntradaProps)
     <TouchableOpacity
       style={estilos.cardEntrada}
       onPress={onPress}
-      onLongPress={() => onExcluir(entrada.id)}
-      delayLongPress={600}
       activeOpacity={0.78}
       accessibilityLabel={`Entrada: ${entrada.titulo}`}
       accessibilityRole="button"
@@ -270,10 +264,7 @@ function EstadoNenhumResultado({ busca, filtroAtivo, onLimpar }: EstadoNenhumRes
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
 export default function TelaDiario({ navigation }: Props) {
-  const { entradas, removerEntrada } = useShello();
-
-  // Estado para o dialog de exclusão por long press
-  const [entradaExcluir, setEntradaExcluir] = useState<string | null>(null);
+  const { entradas } = useShello();
 
   // ID da entrada que está com "IA lendo" (gerenciado via param de retorno)
   const [idIaLendo, setIdIaLendo] = useState<string | null>(null);
@@ -320,8 +311,6 @@ export default function TelaDiario({ navigation }: Props) {
         if (entrada && entrada.conteudo.length > 100) {
           dispararIaLendo(entrada.id);
         }
-        // Bug #3: limpa o param para não reativar o efeito em focos futuros
-        navigation.setParams({ novaEntradaId: undefined } as any);
       }
     });
     return unsubscribe;
@@ -330,39 +319,7 @@ export default function TelaDiario({ navigation }: Props) {
   // ─── Busca e Filtros ────────────────────────────────────────────────────────
 
   const [busca, setBusca] = useState('');
-  const [filtroAtivo, setFiltroAtivo] = useState<'todas' | 'contexto' | 'hoje' | 'ontem' | 'semana' | 'antigas' | 'historico'>('todas');
-  const [buscaResultados, setBuscaResultados] = useState<EntradaDiario[]>([]);
-  const [historyResultados, setHistoryResultados] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (busca.trim()) {
-      api.get(`/api/diary/search?q=${encodeURIComponent(busca.trim())}`)
-        .then((res) => {
-          const items = res.data.items ?? res.data ?? [];
-          const mapped = items.map((d: any) => ({
-            id: d.id,
-            titulo: (d.content || '').slice(0, 40) + ((d.content || '').length > 40 ? '...' : ''),
-            conteudo: d.content || '',
-            dataCriacao: d.created_at,
-            adicionadaAoContexto: false,
-          }));
-          setBuscaResultados(mapped);
-        })
-        .catch((err) => console.error('Erro na busca:', err));
-    } else {
-      setBuscaResultados([]);
-    }
-  }, [busca]);
-
-  useEffect(() => {
-    if (filtroAtivo === 'historico') {
-      api.get('/api/history')
-        .then((res) => {
-          setHistoryResultados(res.data.items ?? res.data ?? []);
-        })
-        .catch((err) => console.error('Erro no histórico:', err));
-    }
-  }, [filtroAtivo]);
+  const [filtroAtivo, setFiltroAtivo] = useState<'todas' | 'contexto' | 'hoje' | 'ontem' | 'semana' | 'antigas'>('todas');
 
   const handleLimparFiltros = useCallback(() => {
     setBusca('');
@@ -409,18 +366,7 @@ export default function TelaDiario({ navigation }: Props) {
 
   // ─── Lista plana com cabeçalhos ────────────────────────────────────────────
 
-  const itensLista: ItemLista[] = useMemo(() => {
-    if (filtroAtivo === 'historico') {
-      return historyResultados.map((item) => ({
-        tipo: 'historico',
-        item,
-      }));
-    }
-    if (busca.trim()) {
-      return agruparEntradas(buscaResultados, idIaLendo);
-    }
-    return agruparEntradas(entradasFiltradas, idIaLendo);
-  }, [filtroAtivo, historyResultados, busca, buscaResultados, entradasFiltradas, idIaLendo]);
+  const itensLista: ItemLista[] = agruparEntradas(entradasFiltradas, idIaLendo);
 
   const renderItem = useCallback(
     ({ item }: ListRenderItemInfo<ItemLista>) => {
@@ -431,33 +377,11 @@ export default function TelaDiario({ navigation }: Props) {
           </View>
         );
       }
-      if (item.tipo === 'historico') {
-        const hItem = item.item;
-        const icon = hItem.type === 'conversation' ? 'message-square' : 'book';
-        const typeLabel = hItem.type === 'conversation' ? 'Conversa' : 'Reflexão';
-        return (
-          <View style={estilos.cardEntrada} testID={`history-item-${hItem.id}`}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-              <Feather name={icon} size={14} color={ShelloTema.cores.marca} />
-              <Text style={{ fontSize: 12, fontWeight: '700', color: ShelloTema.cores.marca }}>
-                {typeLabel} ({hItem.item_count} {hItem.type === 'conversation' ? 'msgs' : 'palavras'})
-              </Text>
-            </View>
-            <Text style={estilos.cardEntradaTexto} numberOfLines={2}>
-              {hItem.preview}
-            </Text>
-            <Text style={estilos.cardEntradaData}>
-              {new Date(hItem.created_at).toLocaleDateString('pt-BR')}
-            </Text>
-          </View>
-        );
-      }
       return (
         <CardEntrada
           entrada={item.entrada}
           iaLendo={item.iaLendo}
           onPress={() => handleAbrirEntrada(item.entrada)}
-          onExcluir={setEntradaExcluir}
         />
       );
     },
@@ -465,11 +389,10 @@ export default function TelaDiario({ navigation }: Props) {
   );
 
   const keyExtractor = useCallback(
-    (item: ItemLista, index: number) => {
-      if (item.tipo === 'cabecalho') return `cabecalho-${item.titulo}`;
-      if (item.tipo === 'historico') return `historico-${item.item.id || index}`;
-      return item.entrada.id || String(index);
-    },
+    (item: ItemLista, index: number) =>
+      item.tipo === 'cabecalho'
+        ? `cabecalho-${item.titulo}`
+        : item.entrada.id || String(index),
     []
   );
 
@@ -542,7 +465,6 @@ export default function TelaDiario({ navigation }: Props) {
             { id: 'ontem', rotulo: 'Ontem' },
             { id: 'semana', rotulo: 'Esta Semana' },
             { id: 'antigas', rotulo: 'Mais Antigas' },
-            { id: 'historico', rotulo: 'Histórico' },
           ].map((opcao) => {
             const ativo = filtroAtivo === opcao.id;
             return (
@@ -590,28 +512,6 @@ export default function TelaDiario({ navigation }: Props) {
             />
           )
         }
-      />
-
-      {/* Dialog de exclusão por long press */}
-      <DialogShello
-        visible={entradaExcluir !== null}
-        onClose={() => setEntradaExcluir(null)}
-        title="Excluir Entrada"
-        message="Tem certeza que deseja apagar esta reflexão? Esta ação não pode ser desfeita."
-        confirmLabel="Excluir"
-        cancelLabel="Cancelar"
-        onConfirm={async () => {
-          if (entradaExcluir) {
-            try {
-              await removerEntrada(entradaExcluir);
-            } catch (e) {
-              console.error('Erro ao excluir entrada:', e);
-            } finally {
-              setEntradaExcluir(null);
-            }
-          }
-        }}
-        isDestructive
       />
     </SafeAreaView>
   );

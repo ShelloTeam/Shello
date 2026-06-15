@@ -59,8 +59,3 @@ ios/
 # ─── OS ───────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
-
-.agents/
-PROJECT.md
-TEST_INFRA.md
-TEST_READY.md 
