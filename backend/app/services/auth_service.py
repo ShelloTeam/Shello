@@ -87,7 +87,6 @@ class AuthService:
         Retorna None se e-mail não existir (resposta idêntica para não revelar cadastro).
         """
         user = self._repo.get_by_email(data.email)
-        print(f"[DEBUG] request_password_reset chamado. user encontrado: {bool(user)}", flush=True)
         if not user:
             # Resposta silenciosa — não revela se e-mail existe
             logger.info("Reset solicitado para e-mail não cadastrado: [REDACTED]")
