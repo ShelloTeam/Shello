@@ -218,6 +218,7 @@ const estilos = StyleSheet.create({
     top: -24,
     justifyContent: "center",
     alignItems: "center",
+    marginHorizontal: 8,
   },
   botaoChatInterno: {
     width: 60,

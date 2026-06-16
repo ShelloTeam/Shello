@@ -21,6 +21,7 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { ShelloTema } from '../styles/tema';
 import { useShello } from '../contexts/ShelloContext';
 import { MemoriaIA } from '../types';
+import FadeInView from '../components/FadeInView';
 
 
 
@@ -133,150 +134,150 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={estilos.areaSegura} edges={['top']}>
-      <ScrollView
-        style={estilos.scroll}
-        contentContainerStyle={estilos.conteudoScroll}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ── Cabeçalho com data ── */}
-        <View style={estilos.cabecalho}>
-          <Feather
-            name="calendar"
-            size={16}
-            color={ShelloTema.cores.textoS}
-          />
-          <Text style={estilos.textoData}>{dataFormatada}</Text>
-        </View>
-
-        {/* ── Saudação em 2 linhas ── */}
-        <View style={estilos.blocoSaudacao}>
-          <Text style={estilos.saudacaoLinha1}>{saudacao}</Text>
-          <Text style={estilos.saudacaoNome}>{nome} 🌿</Text>
-          <Text style={estilos.subtitulo}>
-            Sua mente é um jardim. Nutra-a diariamente.
-          </Text>
-        </View>
-
-        {/* ── Badges pill lado a lado ── */}
-        <View style={estilos.filhaBadges}>
-          <View style={[estilos.badge, estilos.badgeVerde]}>
-            <Text style={estilos.textoBadgeVerde}>🔥 {diasSequencia} {diasSequencia === 1 ? 'dia seguido' : 'dias seguidos'}</Text>
+      <FadeInView style={estilos.scroll}>
+        <ScrollView
+          contentContainerStyle={estilos.conteudoScroll}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* ── Cabeçalho com data ── */}
+          <View style={estilos.cabecalho}>
+            <Feather
+              name="calendar"
+              size={16}
+              color={ShelloTema.cores.textoS}
+            />
+            <Text style={estilos.textoData}>{dataFormatada}</Text>
           </View>
-          <View style={[estilos.badge, estilos.badgeTerracota]}>
-            <Text style={estilos.textoBadgeTerracota}>
-              ✍️ {totalEntradas} {totalEntradas === 1 ? 'entrada' : 'entradas'}
+
+          {/* ── Saudação em 2 linhas ── */}
+          <View style={estilos.blocoSaudacao}>
+            <Text style={estilos.saudacaoLinha1}>{saudacao}</Text>
+            <Text style={estilos.saudacaoNome}>{nome} 🌿</Text>
+            <Text style={estilos.subtitulo}>
+              Sua mente é um jardim. Nutra-a diariamente.
             </Text>
           </View>
-        </View>
 
-        {/* ── Seção de atalhos rápidos ── */}
-        <Text style={estilos.secaoTitulo}>Atalhos rápidos</Text>
-        <View style={estilos.gridAtalhos}>
-          <View style={estilos.filhaAtalhos}>
-            {/* Card — Diário */}
-            <TouchableOpacity
-              style={[estilos.cardAtalho, estilos.cardAtalhoVerde]}
-              onPress={irParaDiario}
-              activeOpacity={0.85}
-              accessible
-              accessibilityLabel="Ir para o Diário"
-              accessibilityRole="button"
-            >
-              <View style={[estilos.circuloIcone, estilos.circuloIconeVerde]}>
-                <Feather
-                  name="book-open"
-                  size={24}
-                  color={ShelloTema.cores.marca}
-                />
-              </View>
-              <Text style={estilos.atalhoTitulo}>Diário</Text>
-              <Text style={estilos.atalhoSubtexto}>Registre seus pensamentos</Text>
-            </TouchableOpacity>
-
-            {/* Card — Tarefas */}
-            <TouchableOpacity
-              style={[estilos.cardAtalho, estilos.cardAtalhoTerracota]}
-              onPress={irParaTarefas}
-              activeOpacity={0.85}
-              accessible
-              accessibilityLabel="Ir para Tarefas"
-              accessibilityRole="button"
-            >
-              <View style={[estilos.circuloIcone, estilos.circuloIconeTerracota]}>
-                <Feather
-                  name="check-square"
-                  size={24}
-                  color={ShelloTema.cores.terracotaIcone}
-                />
-              </View>
-              <Text style={[estilos.atalhoTitulo, estilos.atalhoTituloTerracota]}>
-                Tarefas
+          {/* ── Badges pill lado a lado ── */}
+          <View style={estilos.filhaBadges}>
+            <View style={[estilos.badge, estilos.badgeVerde]}>
+              <Text style={estilos.textoBadgeVerde}>🔥 {diasSequencia} {diasSequencia === 1 ? 'dia seguido' : 'dias seguidos'}</Text>
+            </View>
+            <View style={[estilos.badge, estilos.badgeTerracota]}>
+              <Text style={estilos.textoBadgeTerracota}>
+                ✍️ {totalEntradas} {totalEntradas === 1 ? 'entrada' : 'entradas'}
               </Text>
-              <Text style={estilos.atalhoSubtexto}>Organize sua rotina</Text>
-            </TouchableOpacity>
+            </View>
           </View>
 
-          <View style={estilos.filhaAtalhos}>
-            {/* Card — Chat */}
-            <TouchableOpacity
-              style={[estilos.cardAtalho, estilos.cardAtalhoPessego]}
-              onPress={irParaChat}
-              activeOpacity={0.85}
-              accessible
-              accessibilityLabel="Conversar com o Shello"
-              accessibilityRole="button"
-            >
-              <View style={[estilos.circuloIcone, estilos.circuloIconePessego]}>
-                <Feather
-                  name="message-circle"
-                  size={24}
-                  color={ShelloTema.cores.pessegoDark}
-                />
-              </View>
-              <Text style={[estilos.atalhoTitulo, estilos.atalhoTituloPessego]}>
-                Falar com Shello
-              </Text>
-              <Text style={estilos.atalhoSubtexto}>Desabafe e tire dúvidas</Text>
-            </TouchableOpacity>
+          {/* ── Seção de atalhos rápidos ── */}
+          <Text style={estilos.secaoTitulo}>Atalhos rápidos</Text>
+          <View style={estilos.gridAtalhos}>
+            <View style={estilos.filhaAtalhos}>
+              {/* Card — Diário */}
+              <TouchableOpacity
+                style={[estilos.cardAtalho, estilos.cardAtalhoVerde]}
+                onPress={irParaDiario}
+                activeOpacity={0.85}
+                accessible
+                accessibilityLabel="Ir para o Diário"
+                accessibilityRole="button"
+              >
+                <View style={[estilos.circuloIcone, estilos.circuloIconeVerde]}>
+                  <Feather
+                    name="book-open"
+                    size={24}
+                    color={ShelloTema.cores.marca}
+                  />
+                </View>
+                <Text style={estilos.atalhoTitulo}>Diário</Text>
+                <Text style={estilos.atalhoSubtexto}>Registre seus pensamentos</Text>
+              </TouchableOpacity>
 
-            {/* Card — Perfil */}
+              {/* Card — Tarefas */}
+              <TouchableOpacity
+                style={[estilos.cardAtalho, estilos.cardAtalhoTerracota]}
+                onPress={irParaTarefas}
+                activeOpacity={0.85}
+                accessible
+                accessibilityLabel="Ir para Tarefas"
+                accessibilityRole="button"
+              >
+                <View style={[estilos.circuloIcone, estilos.circuloIconeTerracota]}>
+                  <Feather
+                    name="check-square"
+                    size={24}
+                    color={ShelloTema.cores.terracotaIcone}
+                  />
+                </View>
+                <Text style={[estilos.atalhoTitulo, estilos.atalhoTituloTerracota]}>
+                  Tarefas
+                </Text>
+                <Text style={estilos.atalhoSubtexto}>Organize sua rotina</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={estilos.filhaAtalhos}>
+              {/* Card — Chat */}
+              <TouchableOpacity
+                style={[estilos.cardAtalho, estilos.cardAtalhoPessego]}
+                onPress={irParaChat}
+                activeOpacity={0.85}
+                accessible
+                accessibilityLabel="Conversar com o Shello"
+                accessibilityRole="button"
+              >
+                <View style={[estilos.circuloIcone, estilos.circuloIconePessego]}>
+                  <Feather
+                    name="message-circle"
+                    size={24}
+                    color={ShelloTema.cores.pessegoDark}
+                  />
+                </View>
+                <Text style={[estilos.atalhoTitulo, estilos.atalhoTituloPessego]}>
+                  Falar com Shello
+                </Text>
+                <Text style={estilos.atalhoSubtexto}>Desabafe e tire dúvidas</Text>
+              </TouchableOpacity>
+
+              {/* Card — Perfil */}
+              <TouchableOpacity
+                style={[estilos.cardAtalho, estilos.cardAtalhoPerfil]}
+                onPress={irParaPerfil}
+                activeOpacity={0.85}
+                accessible
+                accessibilityLabel="Ir para Perfil"
+                accessibilityRole="button"
+              >
+                <View style={[estilos.circuloIcone, estilos.circuloIconePerfil]}>
+                  <Feather
+                    name="user"
+                    size={24}
+                    color={ShelloTema.cores.marca}
+                  />
+                </View>
+                <Text style={estilos.atalhoTitulo}>Meu Perfil</Text>
+                <Text style={estilos.atalhoSubtexto}>Sua evolução e memórias</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Atalho de Largura Total — Adicionar Contexto */}
             <TouchableOpacity
-              style={[estilos.cardAtalho, estilos.cardAtalhoPerfil]}
-              onPress={irParaPerfil}
+              style={estilos.cardAtalhoContexto}
+              onPress={() => setModalContextoVisivel(true)}
               activeOpacity={0.85}
-              accessible
-              accessibilityLabel="Ir para Perfil"
-              accessibilityRole="button"
             >
-              <View style={[estilos.circuloIcone, estilos.circuloIconePerfil]}>
-                <Feather
-                  name="user"
-                  size={24}
-                  color={ShelloTema.cores.marca}
-                />
+              <View style={estilos.circuloIconeContexto}>
+                <Feather name="plus-circle" size={24} color="#FFF" />
               </View>
-              <Text style={estilos.atalhoTitulo}>Meu Perfil</Text>
-              <Text style={estilos.atalhoSubtexto}>Sua evolução e memórias</Text>
+              <View style={estilos.atalhoContextoTextos}>
+                <Text style={estilos.atalhoTituloContexto}>Adicionar Contexto</Text>
+                <Text style={estilos.atalhoSubtextoContexto}>Ensine algo novo ao Shello sobre você</Text>
+              </View>
             </TouchableOpacity>
           </View>
-
-          {/* Atalho de Largura Total — Adicionar Contexto */}
-          <TouchableOpacity
-            style={estilos.cardAtalhoContexto}
-            onPress={() => setModalContextoVisivel(true)}
-            activeOpacity={0.85}
-          >
-            <View style={estilos.circuloIconeContexto}>
-              <Feather name="plus-circle" size={24} color="#FFF" />
-            </View>
-            <View style={estilos.atalhoContextoTextos}>
-              <Text style={estilos.atalhoTituloContexto}>Adicionar Contexto</Text>
-              <Text style={estilos.atalhoSubtextoContexto}>Ensine algo novo ao Shello sobre você</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-      </ScrollView>
+        </ScrollView>
+      </FadeInView>
 
       {/* ── Modal Adicionar Contexto ────────────────────────────────────────── */}
       <Modal
