@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 
 import { ShelloTema } from '../styles/tema';
+import FadeInView from '../components/FadeInView';
 import { useShello } from '../contexts/ShelloContext';
 import { MemoriaIA, NivelFormalidade } from '../types';
 import api from '../services/api';
@@ -618,12 +619,12 @@ export default function TelaPerfil() {
 
   return (
     <SafeAreaView style={estilos.areaSegura}>
-      <ScrollView
-        style={estilos.scrollView}
-        contentContainerStyle={estilos.conteudoScroll}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ── Cabeçalho ──────────────────────────────────────────────────── */}
+      <FadeInView style={estilos.scrollView}>
+        <ScrollView
+          contentContainerStyle={estilos.conteudoScroll}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* ── Cabeçalho ──────────────────────────────────────────────────── */}
         <View style={estilos.cabecalho}>
           {/* Avatar circular com logo do Shello */}
           <View style={estilos.avatarWrapper}>
@@ -856,6 +857,7 @@ export default function TelaPerfil() {
         {/* Espaçamento inferior */}
         <View style={estilos.espacamentoInferior} />
       </ScrollView>
+      </FadeInView>
 
       {/* Modal de nome salvo */}
       {modalSalvo && (

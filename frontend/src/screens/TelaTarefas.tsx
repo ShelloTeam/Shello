@@ -25,6 +25,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { ShelloTema } from '../styles/tema';
+import FadeInView from '../components/FadeInView';
 import { useShello } from '../contexts/ShelloContext';
 import { Tarefa, Rotina } from '../types';
 import DialogShello from '../components/DialogShello';
@@ -746,13 +747,13 @@ export default function TelaTarefas(): React.JSX.Element {
 
   return (
     <SafeAreaView style={estilos.safeArea}>
-      <ScrollView
-        style={estilos.scroll}
-        contentContainerStyle={estilos.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* ── Cabeçalho serifado ─────────────────────────────────────────── */}
+      <FadeInView style={estilos.scroll}>
+        <ScrollView
+          contentContainerStyle={estilos.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* ── Cabeçalho serifado ─────────────────────────────────────────── */}
         <View style={estilos.cabecalho}>
           <Text style={estilos.tituloPrincipal}>Sua Jornada</Text>
           <Text style={estilos.subtituloPrincipal}>
@@ -897,7 +898,8 @@ export default function TelaTarefas(): React.JSX.Element {
 
         {/* Espaço final */}
         <View style={estilos.espacoFinal} />
-      </ScrollView>
+        </ScrollView>
+      </FadeInView>
 
       {/* ── Modal de nova tarefa ──────────────────────────────────────────── */}
       <ModalNovaTarefa

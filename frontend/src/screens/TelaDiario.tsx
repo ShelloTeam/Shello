@@ -28,6 +28,7 @@ import { useShello } from "../contexts/ShelloContext";
 import { EntradaDiario } from "../types";
 import { DiarioStackParamList } from "../navigation/NavegacaoDiario";
 import DialogShello from "../components/DialogShello";
+import FadeInView from '../components/FadeInView';
 
 // ─── Constantes ────────────────────────────────────────────────────────────────
 
@@ -450,8 +451,9 @@ export default function TelaDiario({ navigation }: Props) {
 
   return (
     <SafeAreaView style={estilos.areaSegura} edges={["top"]}>
-      {/* Botão proeminente "Nova Entrada" fixo no topo */}
-      <View style={estilos.barraAcoesTopo}>
+      <FadeInView style={{ flex: 1 }}>
+        {/* Botão proeminente "Nova Entrada" fixo no topo */}
+        <View style={estilos.barraAcoesTopo}>
         {renderCabecalho()}
         <TouchableOpacity
           style={estilos.botaoNovaEntrada}
@@ -574,6 +576,7 @@ export default function TelaDiario({ navigation }: Props) {
         }}
         isDestructive
       />
+      </FadeInView>
     </SafeAreaView>
   );
 }
