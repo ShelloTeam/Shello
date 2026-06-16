@@ -30,14 +30,17 @@ class EmailService:
 
     def send_reset_email(self, to_email: str, reset_url: str) -> None:
         resend.api_key = self._api_key
+        print(f"[DEBUG] send_reset_email chamado. api_key presente: {bool(self._api_key)}", flush=True)
         try:
-            resend.Emails.send({
+            result = resend.Emails.send({
                 "from": "Shello <onboarding@resend.dev>",
                 "to": [to_email],
                 "subject": RESET_EMAIL_SUBJECT,
                 "html": RESET_EMAIL_HTML.format(reset_url=reset_url),
             })
+            print(f"[DEBUG] Resend retornou: {result}", flush=True)
             logger.info("Email de reset enviado para: [REDACTED]")
         except Exception as exc:
+            print(f"[DEBUG] Resend exception: {exc}", flush=True)
             logger.error("Erro ao enviar email de reset: %s", exc)
             raise RuntimeError("Falha ao enviar email de recuperação.") from exc
