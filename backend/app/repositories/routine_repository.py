@@ -52,8 +52,8 @@ class RoutineRepository:
                 raise RuntimeError("Inserção retornou dados vazios.")
             logger.info("Rotina criada: id=%s user_id=%s", result.data[0]["id"], user_id)
             return result.data[0]
-        except Exception:
-            logger.error("Erro ao criar rotina")
+        except Exception as exc:
+            logger.error("Erro ao criar rotina: %s", exc)
             raise
 
     def update(self, routine_id: str, user_id: str, fields: dict) -> dict | None:

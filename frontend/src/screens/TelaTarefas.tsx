@@ -57,6 +57,7 @@ function formatarData(iso: string): string {
     return parseDateLocal(iso).toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: 'short',
+      year: 'numeric',
     });
   } catch {
     return iso;
@@ -432,6 +433,109 @@ function ModalNovaTarefa({
   );
 }
 
+// ─── Componente: ModalNovaRotina ───────────────────────────────────────────────
+
+interface ModalNovaRotinaProps {
+  visivel: boolean;
+  onFechar: () => void;
+  onAdicionar: (titulo: string, atividades: string[], periodo: Rotina['periodo']) => void;
+}
+
+function ModalNovaRotina({ visivel, onFechar, onAdicionar }: ModalNovaRotinaProps): React.JSX.Element {
+  const [titulo, setTitulo] = useState('');
+  const [atividadesStr, setAtividadesStr] = useState('');
+  const [periodo, setPeriodo] = useState<Rotina['periodo']>('manha');
+
+  const handleFechar = useCallback(() => {
+    setTitulo('');
+    setAtividadesStr('');
+    setPeriodo('manha');
+    onFechar();
+  }, [onFechar]);
+
+  const handleAdicionar = useCallback(() => {
+    const tituloTrimado = titulo.trim();
+    const atividades = atividadesStr
+      .split('\n')
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+
+    if (!tituloTrimado || atividades.length === 0) return;
+
+    onAdicionar(tituloTrimado, atividades, periodo);
+    handleFechar();
+  }, [titulo, atividadesStr, periodo, onAdicionar, handleFechar]);
+
+  const podeCriar = titulo.trim().length > 0 && atividadesStr.trim().length > 0;
+
+  return (
+    <Modal visible={visivel} animationType="slide" transparent onRequestClose={handleFechar}>
+      <KeyboardAvoidingView style={estilos.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <TouchableOpacity style={estilos.modalFundo} activeOpacity={1} onPress={handleFechar} />
+
+        <View style={estilos.modalConteudo}>
+          <View style={estilos.modalAlca} />
+          <Text style={estilos.modalTitulo}>Nova Rotina</Text>
+          <Text style={estilos.modalSubtitulo}>Quais rituais você quer agrupar?</Text>
+
+          <Text style={estilos.modalLabel}>Título da Rotina</Text>
+          <TextInput
+            style={estilos.modalInput}
+            value={titulo}
+            onChangeText={setTitulo}
+            placeholder="Ex: Rotina Matinal..."
+            placeholderTextColor={ShelloTema.cores.textoS}
+            maxLength={100}
+          />
+
+          <Text style={estilos.modalLabel}>Período</Text>
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: ShelloTema.espacamento.md }}>
+            {(['manha', 'tarde', 'noite'] as Rotina['periodo'][]).map(p => (
+              <TouchableOpacity
+                key={p}
+                style={[
+                  estilos.chipTipo,
+                  periodo === p && estilos.chipTipoAtivo
+                ]}
+                onPress={() => setPeriodo(p)}
+              >
+                <Text style={[estilos.chipTipoTexto, periodo === p && estilos.chipTipoTextoAtivo]}>
+                  {p === 'manha' ? 'Manhã' : p === 'tarde' ? 'Tarde' : 'Noite'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={estilos.modalLabel}>Atividades (uma por linha)</Text>
+          <TextInput
+            style={[estilos.modalInput, { minHeight: 80, textAlignVertical: 'top' }]}
+            value={atividadesStr}
+            onChangeText={setAtividadesStr}
+            placeholder={"Ex:\nBeber água\nMeditar 10 min\nLer 5 páginas"}
+            placeholderTextColor={ShelloTema.cores.textoS}
+            multiline
+          />
+
+          <View style={estilos.modalBotoes}>
+            <TouchableOpacity style={estilos.botaoCancelarModal} onPress={handleFechar}>
+              <Text style={estilos.botaoCancelarModalTexto}>Cancelar</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[estilos.botaoAdicionarModal, !podeCriar && estilos.botaoAdicionarModalDesabilitado]}
+              onPress={handleAdicionar}
+              disabled={!podeCriar}
+            >
+              <Feather name="plus" size={16} color={ShelloTema.cores.superficie} />
+              <Text style={estilos.botaoAdicionarModalTexto}>Criar Rotina</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
 // ─── Componente: EstadoVazioRotinas ───────────────────────────────────────────
 
 function EstadoVazioRotinas(): React.JSX.Element {
@@ -532,14 +636,66 @@ function EstadoVazio(): React.JSX.Element {
 // ─── Tela Principal: TelaTarefas ───────────────────────────────────────────────
 
 export default function TelaTarefas(): React.JSX.Element {
-  const { tarefas, rotinas, adicionarTarefa, alternarTarefa, removerTarefa, removerRotina } = useShello();
+  const { tarefas, rotinas, adicionarTarefa, alternarTarefa, removerTarefa, removerRotina, adicionarRotina } = useShello();
   const [modalVisivel, setModalVisivel] = useState(false);
+  const [modalRotinaVisivel, setModalRotinaVisivel] = useState(false);
   const [tarefaExcluir, setTarefaExcluir] = useState<string | null>(null);
   const [rotinaExcluir, setRotinaExcluir] = useState<string | null>(null);
 
   // Separação pendentes / concluídas
-  const tarefasPendentes  = useMemo(() => tarefas.filter((t) => !t.concluida), [tarefas]);
   const tarefasConcluidas = useMemo(() => tarefas.filter((t) => t.concluida),  [tarefas]);
+
+  const {
+    tarefasAtrasadas,
+    tarefasHoje,
+    gruposProximas,
+    tarefasSemData,
+    temProximas
+  } = useMemo(() => {
+    const atrasadas: Tarefa[] = [];
+    const hojeArr: Tarefa[] = [];
+    const semData: Tarefa[] = [];
+    const proximasMap = new Map<string, Tarefa[]>();
+
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    tarefas.filter(t => !t.concluida).forEach(t => {
+      if (!t.data) {
+        semData.push(t);
+        return;
+      }
+      const d = parseDateLocal(t.data);
+      d.setHours(0, 0, 0, 0);
+      if (d < hoje) atrasadas.push(t);
+      else if (d.getTime() === hoje.getTime()) hojeArr.push(t);
+      else {
+        const dStr = d.getTime().toString();
+        if (!proximasMap.has(dStr)) proximasMap.set(dStr, []);
+        proximasMap.get(dStr)!.push(t);
+      }
+    });
+
+    const proximasAgrupadas = Array.from(proximasMap.entries())
+      .sort((a, b) => Number(a[0]) - Number(b[0]))
+      .map(([dStr, tArr]) => {
+        const d = new Date(Number(dStr));
+        let dataTitulo = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+        dataTitulo = dataTitulo.charAt(0).toUpperCase() + dataTitulo.slice(1);
+        return { titulo: dataTitulo, tarefas: tArr };
+      });
+
+    return {
+      tarefasAtrasadas: atrasadas,
+      tarefasHoje: hojeArr,
+      gruposProximas: proximasAgrupadas,
+      tarefasSemData: semData,
+      temProximas: proximasMap.size > 0
+    };
+  }, [tarefas]);
+
+  const temPendentes = tarefasAtrasadas.length > 0 || tarefasHoje.length > 0 || temProximas || tarefasSemData.length > 0;
+
 
   const handleAdicionarTarefa = useCallback(
     async (titulo: string, descricao?: string, data?: string) => {
@@ -578,6 +734,15 @@ export default function TelaTarefas(): React.JSX.Element {
       }
     }
   }, [rotinaExcluir, removerRotina]);
+
+  const handleAdicionarRotina = useCallback(async (titulo: string, atividades: string[], periodo: Rotina['periodo']) => {
+    try {
+      // @ts-ignore
+      await adicionarRotina(titulo, atividades, periodo);
+    } catch (e) {
+      console.error('Erro ao adicionar rotina:', e);
+    }
+  }, [adicionarRotina]);
 
   return (
     <SafeAreaView style={estilos.safeArea}>
@@ -626,18 +791,48 @@ export default function TelaTarefas(): React.JSX.Element {
             <EstadoVazio />
           ) : (
             <View style={estilos.listaTarefas}>
-              {/* Pendentes primeiro */}
-              {tarefasPendentes.map((tarefa) => (
-                <ItemTarefa
-                  key={tarefa.id}
-                  tarefa={tarefa}
-                  onAlternar={handleAlternarTarefa}
-                  onExcluir={setTarefaExcluir}
-                />
+              {/* Grupo: Atrasadas */}
+              {tarefasAtrasadas.length > 0 && (
+                <>
+                  <Text style={estilos.grupoTituloErro}>Atrasadas</Text>
+                  {tarefasAtrasadas.map((tarefa) => (
+                    <ItemTarefa key={tarefa.id} tarefa={tarefa} onAlternar={handleAlternarTarefa} onExcluir={setTarefaExcluir} />
+                  ))}
+                </>
+              )}
+
+              {/* Grupo: Hoje */}
+              {tarefasHoje.length > 0 && (
+                <>
+                  <Text style={estilos.grupoTitulo}>Hoje</Text>
+                  {tarefasHoje.map((tarefa) => (
+                    <ItemTarefa key={tarefa.id} tarefa={tarefa} onAlternar={handleAlternarTarefa} onExcluir={setTarefaExcluir} />
+                  ))}
+                </>
+              )}
+
+              {/* Grupo: Próximos Dias (Agrupados por Data) */}
+              {gruposProximas.map((grupo) => (
+                <React.Fragment key={grupo.titulo}>
+                  <Text style={estilos.grupoTitulo}>{grupo.titulo}</Text>
+                  {grupo.tarefas.map((tarefa) => (
+                    <ItemTarefa key={tarefa.id} tarefa={tarefa} onAlternar={handleAlternarTarefa} onExcluir={setTarefaExcluir} />
+                  ))}
+                </React.Fragment>
               ))}
 
+              {/* Grupo: Sem Data */}
+              {tarefasSemData.length > 0 && (
+                <>
+                  <Text style={estilos.grupoTitulo}>Em Algum Momento</Text>
+                  {tarefasSemData.map((tarefa) => (
+                    <ItemTarefa key={tarefa.id} tarefa={tarefa} onAlternar={handleAlternarTarefa} onExcluir={setTarefaExcluir} />
+                  ))}
+                </>
+              )}
+
               {/* Separador visual entre pendentes e concluídas */}
-              {tarefasConcluidas.length > 0 && tarefasPendentes.length > 0 && (
+              {tarefasConcluidas.length > 0 && temPendentes && (
                 <View style={estilos.divisorConcluidas}>
                   <View style={estilos.divisorLinha} />
                   <Text style={estilos.divisorTexto}>Concluídas</Text>
@@ -646,7 +841,7 @@ export default function TelaTarefas(): React.JSX.Element {
               )}
 
               {/* Apenas concluídas — sem separador se não há pendentes */}
-              {tarefasConcluidas.length > 0 && tarefasPendentes.length === 0 && (
+              {tarefasConcluidas.length > 0 && !temPendentes && (
                 <View style={estilos.secaoConcluidasHeader}>
                   <Feather name="check-circle" size={14} color={ShelloTema.cores.marca} />
                   <Text style={estilos.secaoConcluidasTexto}>
@@ -672,8 +867,20 @@ export default function TelaTarefas(): React.JSX.Element {
         <View style={estilos.secao}>
           <View style={estilos.secaoCabecalho}>
             <Text style={estilos.secaoTitulo}>Rotinas Diárias</Text>
-            <View style={estilos.rotinaBadge}>
-              <Text style={estilos.rotinaBadgeTexto}>{rotinas.length}</Text>
+            
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View style={estilos.rotinaBadge}>
+                <Text style={estilos.rotinaBadgeTexto}>{rotinas.length}</Text>
+              </View>
+              <TouchableOpacity
+                style={estilos.botaoAdicionar}
+                onPress={() => setModalRotinaVisivel(true)}
+                activeOpacity={0.8}
+                accessibilityLabel="Adicionar nova rotina"
+                accessibilityRole="button"
+              >
+                <Feather name="plus" size={20} color={ShelloTema.cores.pessegoDark} />
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -697,6 +904,13 @@ export default function TelaTarefas(): React.JSX.Element {
         visivel={modalVisivel}
         onFechar={() => setModalVisivel(false)}
         onAdicionar={handleAdicionarTarefa}
+      />
+
+      {/* ── Modal de nova rotina ──────────────────────────────────────────── */}
+      <ModalNovaRotina
+        visivel={modalRotinaVisivel}
+        onFechar={() => setModalRotinaVisivel(false)}
+        onAdicionar={handleAdicionarRotina}
       />
 
       {/* ── Dialog de exclusão de tarefa ─────────────────────────────── */}
@@ -739,6 +953,48 @@ const estilos = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: ShelloTema.espacamento.lg,
+  },
+  
+  // ── Grupos de tarefas ──
+  grupoTitulo: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: ShelloTema.cores.textoS,
+    marginTop: ShelloTema.espacamento.md,
+    marginBottom: ShelloTema.espacamento.xs,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  grupoTituloErro: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: ShelloTema.cores.erro,
+    marginTop: ShelloTema.espacamento.md,
+    marginBottom: ShelloTema.espacamento.xs,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+
+  // ── Chips da Rotina ──
+  chipTipo: {
+    backgroundColor: ShelloTema.cores.fundo,
+    borderRadius: ShelloTema.forma.bordaPill,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: ShelloTema.cores.marcaClaro,
+  },
+  chipTipoAtivo: {
+    backgroundColor: ShelloTema.cores.marcaClaro,
+    borderColor: ShelloTema.cores.marca,
+  },
+  chipTipoTexto: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: ShelloTema.cores.textoS,
+  },
+  chipTipoTextoAtivo: {
+    color: ShelloTema.cores.marca,
   },
 
   // ── Cabeçalho ───────────────────────────────────────────────────────────────

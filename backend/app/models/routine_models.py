@@ -21,7 +21,7 @@ class Routine(BaseModel):
     nome: str
     atividades: list[str]
     periodo: str
-    created_at: str
-    updated_at: str
+    created_at: str | None = None
+    updated_at: str | None = None
 
     model_config = {"from_attributes": True}
