@@ -310,7 +310,7 @@ export default function HomeScreen() {
 
             <View style={estilos.chipsTipoMemoria}>
               {(['OBJETIVO', 'PREFERENCIA', 'FATO'] as MemoriaIA['tipo'][]).map(tipo => {
-                const rotulos: any = { OBJETIVO: 'Meta Atual', PREFERENCIA: 'Preferência', FATO: 'Fato/Estilo de vida' };
+                const rotulos: any = { OBJETIVO: 'Meta', PREFERENCIA: 'Preferência', FATO: 'Fato' };
                 return (
                   <TouchableOpacity
                     key={tipo}
