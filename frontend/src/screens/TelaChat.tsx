@@ -30,6 +30,7 @@ import { ShelloTema } from '../styles/tema';
 import { useShello } from '../contexts/ShelloContext';
 import { MensagemChat, ExpressaoShello } from '../types';
 import api from '../services/api';
+import DialogShello from '../components/DialogShello';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const markdownEstilos = {
@@ -235,6 +236,7 @@ export default function TelaChat(): React.JSX.Element {
   const [confirmacaoTarefa, setConfirmacaoTarefa] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversaSavedLoaded, setConversaSavedLoaded] = useState(false);
+  const [dialogNovoChat, setDialogNovoChat] = useState(false);
 
   const flatListRef = useRef<FlatList<MensagemChat>>(null);
 
@@ -399,24 +401,33 @@ export default function TelaChat(): React.JSX.Element {
 
   return (
     <SafeAreaView style={estilos.safeArea}>
+      {/* ── Cabeçalho — fora do KAV para não deslocar com o teclado ──── */}
+      <View style={estilos.cabecalho}>
+        <View style={estilos.avatarWrapper}>
+          <AvatarShello expressao={expressaoAtual} tamanho={48} />
+          <View style={estilos.statusOnline} />
+        </View>
+        <View style={estilos.cabecalhoTextos}>
+          <Text style={estilos.cabecalhoNome}>Shello</Text>
+          <Text style={estilos.cabecalhoSubtitulo}>Seu Companheiro de IA</Text>
+        </View>
+        <TouchableOpacity
+          onPress={() => setDialogNovoChat(true)}
+          style={estilos.botaoRefresh}
+          activeOpacity={0.75}
+          accessibilityLabel="Novo chat"
+          accessibilityRole="button"
+        >
+          <Feather name="refresh-cw" size={20} color={ShelloTema.cores.textoS} />
+        </TouchableOpacity>
+      </View>
+
       <KeyboardAvoidingView
         style={estilos.tela}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-        {/* ── Cabeçalho ─────────────────────────────────────────────────── */}
-        <View style={estilos.cabecalho}>
-          <View style={estilos.avatarWrapper}>
-            <AvatarShello expressao={expressaoAtual} tamanho={48} />
-            <View style={estilos.statusOnline} />
-          </View>
-          <View style={estilos.cabecalhoTextos}>
-            <Text style={estilos.cabecalhoNome}>Shello</Text>
-            <Text style={estilos.cabecalhoSubtitulo}>Seu Companheiro de IA</Text>
-          </View>
-        </View>
-
-        {/* ── Sugestões rápidas ─────────────────────────────────────────── */}
+        {/* ── Sugestões rápidas (só quando teclado fechado) ────────────── */}
         {mostrarSugestoes && (
           <ScrollView
             horizontal
@@ -447,6 +458,7 @@ export default function TelaChat(): React.JSX.Element {
           keyExtractor={(item) => item.id}
           renderItem={renderMensagem}
           inverted
+          style={{ flex: 1 }}
           contentContainerStyle={estilos.listaMensagens}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
@@ -496,6 +508,20 @@ export default function TelaChat(): React.JSX.Element {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {/* ── Dialog: confirmar novo chat ──────────────────────────────────── */}
+      <DialogShello
+        visible={dialogNovoChat}
+        onClose={() => setDialogNovoChat(false)}
+        title="Novo Chat"
+        message="Tem certeza? A conversa atual será encerrada."
+        confirmLabel="Iniciar"
+        cancelLabel="Cancelar"
+        onConfirm={() => {
+          setDialogNovoChat(false);
+          iniciarNovoChat();
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -546,6 +572,10 @@ const estilos = StyleSheet.create({
   contadorWrapper: { alignItems: 'center' },
   contadorTexto: { fontSize: 11, color: ShelloTema.cores.textoS, fontWeight: '500' },
   contadorTextoAlerta: { color: ShelloTema.cores.erro, fontWeight: '700' },
+  botaoRefresh: {
+    padding: 8,
+    marginLeft: ShelloTema.espacamento.sm,
+  },
 
   // Banner de limite
   bannerLimite: {
