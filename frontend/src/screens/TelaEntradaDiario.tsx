@@ -8,6 +8,7 @@ import React, {
   useCallback,
   useEffect,
 } from 'react';
+import type { EntradaDiario } from '../types';
 import {
   View,
   Text,
@@ -45,11 +46,16 @@ export default function TelaEntradaDiario({ route, navigation }: Props): React.J
   const [modalContexto, setModalContexto] = useState(false);
   const [modalExcluir, setModalExcluir] = useState(false);
   const [idEntradaSalva, setIdEntradaSalva] = useState<string | null>(entrada?.id ?? null);
+  const [jaTemContexto, setJaTemContexto] = useState(entrada?.adicionadaAoContexto ?? false);
 
   const inputRef = useRef<TextInput>(null);
   const animacaoContexto = useRef(new Animated.Value(0)).current;
   const animacaoRef = useRef<Animated.CompositeAnimation | null>(null);
   const timerModal = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Mutex booleano: impede que finalizar e contexto rodem simultaneamente no código
+  const emAndamentoRef = useRef(false);
+  // Promise compartilhada: evita criação dupla de entrada no banco
+  const criandoEntradaRef = useRef<Promise<EntradaDiario> | null>(null);
 
   // Cleanup de animações e timers ao desmontar
   useEffect(() => {
@@ -80,19 +86,29 @@ export default function TelaEntradaDiario({ route, navigation }: Props): React.J
       return;
     }
 
+    // Guarda de código: impede execução simultânea com adicionarAoContexto
+    if (emAndamentoRef.current) return;
+    emAndamentoRef.current = true;
+
     setSalvando(true);
     try {
       const titulo = gerarTitulo(conteudoTrimado);
       if (idEntradaSalva) {
         await atualizarEntrada(idEntradaSalva, titulo, conteudoTrimado);
       } else {
-        const novaEntrada = await adicionarEntrada(titulo, conteudoTrimado);
+        // Dispara a promise E armazena a referência atomicamente antes do await
+        // para que adicionarAoContexto possa reusar a mesma chamada
+        const p = adicionarEntrada(titulo, conteudoTrimado);
+        criandoEntradaRef.current = p;
+        const novaEntrada = await p;
         setIdEntradaSalva(novaEntrada.id);
       }
       navigation.goBack();
     } catch (e) {
       console.error('Erro ao salvar entrada:', e);
     } finally {
+      criandoEntradaRef.current = null;
+      emAndamentoRef.current = false;
       setSalvando(false);
     }
   }, [texto, idEntradaSalva, adicionarEntrada, atualizarEntrada, navigation]);
@@ -102,15 +118,32 @@ export default function TelaEntradaDiario({ route, navigation }: Props): React.J
     const conteudoTrimado = texto.trim();
     if (!conteudoTrimado) return;
 
+    // Guarda de código: impede execução simultânea com finalizarEntrada
+    if (emAndamentoRef.current) return;
+    emAndamentoRef.current = true;
+
     setAdicionandoContexto(true);
     try {
       let idParaContexto = idEntradaSalva;
       if (!idParaContexto) {
-        const novaEntrada = await adicionarEntrada(gerarTitulo(conteudoTrimado), conteudoTrimado);
+        let novaEntrada: EntradaDiario;
+        if (criandoEntradaRef.current) {
+          // finalizarEntrada já está criando — reutiliza a mesma promise
+          novaEntrada = await criandoEntradaRef.current;
+        } else {
+          // Nenhuma criação em andamento — cria agora e registra no ref
+          const p = adicionarEntrada(gerarTitulo(conteudoTrimado), conteudoTrimado);
+          criandoEntradaRef.current = p;
+          novaEntrada = await p;
+          criandoEntradaRef.current = null;
+        }
         setIdEntradaSalva(novaEntrada.id);
         idParaContexto = novaEntrada.id;
       }
-      await marcarEntradaComoContexto(idParaContexto, conteudoTrimado);
+
+      // Passa o conteúdo original como referência para deletar a memória antiga
+      const conteudoAnterior = jaTemContexto ? (entrada?.conteudo ?? undefined) : undefined;
+      await marcarEntradaComoContexto(idParaContexto, conteudoTrimado, conteudoAnterior);
 
       animacaoRef.current = Animated.sequence([
         Animated.timing(animacaoContexto, { toValue: 1, duration: 300, useNativeDriver: true }),
@@ -119,6 +152,7 @@ export default function TelaEntradaDiario({ route, navigation }: Props): React.J
       ]);
       animacaoRef.current.start();
 
+      setJaTemContexto(true);
       setModalContexto(true);
       if (timerModal.current) clearTimeout(timerModal.current);
       timerModal.current = setTimeout(() => setModalContexto(false), 2500);
@@ -128,9 +162,10 @@ export default function TelaEntradaDiario({ route, navigation }: Props): React.J
         JSON.stringify(e?.response?.data ?? e, null, 2)
       );
     } finally {
+      emAndamentoRef.current = false;
       setAdicionandoContexto(false);
     }
-  }, [texto, idEntradaSalva, adicionarEntrada, marcarEntradaComoContexto, animacaoContexto]);
+  }, [texto, idEntradaSalva, jaTemContexto, entrada, adicionarEntrada, marcarEntradaComoContexto, animacaoContexto]);
 
   const deletarEntrada = useCallback(async () => {
     if (idEntradaSalva) {
@@ -186,27 +221,31 @@ export default function TelaEntradaDiario({ route, navigation }: Props): React.J
         {/* ── Barra de ações ────────────────────────────────────────────── */}
         <View style={estilos.barraAcoes}>
           <TouchableOpacity
-            style={[estilos.botaoContexto, adicionandoContexto && estilos.botaoDesabilitado]}
+            style={[estilos.botaoContexto, (adicionandoContexto || salvando) && estilos.botaoDesabilitado]}
             onPress={adicionarAoContexto}
-            disabled={adicionandoContexto || !texto.trim()}
+            disabled={adicionandoContexto || salvando || !texto.trim()}
             activeOpacity={0.8}
-            accessibilityLabel="Adicionar ao contexto do Shello"
+            accessibilityLabel={jaTemContexto ? 'Atualizar contexto do Shello' : 'Adicionar ao contexto do Shello'}
             accessibilityRole="button"
           >
             <Feather
-              name={adicionandoContexto ? 'loader' : 'cpu'}
+              name={adicionandoContexto ? 'loader' : jaTemContexto ? 'refresh-cw' : 'cpu'}
               size={15}
               color={ShelloTema.cores.marca}
             />
             <Text style={estilos.botaoContextoTexto}>
-              {adicionandoContexto ? '  Adicionando...' : '  + Contexto Shello'}
+              {adicionandoContexto
+                ? '  Adicionando...'
+                : jaTemContexto
+                ? '  Atualizar contexto'
+                : '  + Contexto Shello'}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[estilos.botaoFinalizar, salvando && estilos.botaoDesabilitado]}
+            style={[estilos.botaoFinalizar, (salvando || adicionandoContexto) && estilos.botaoDesabilitado]}
             onPress={finalizarEntrada}
-            disabled={salvando}
+            disabled={salvando || adicionandoContexto}
             activeOpacity={0.8}
             accessibilityLabel="Finalizar e salvar entrada"
             accessibilityRole="button"
