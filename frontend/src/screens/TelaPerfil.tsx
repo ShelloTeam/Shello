@@ -947,7 +947,7 @@ export default function TelaPerfil() {
                 maxLength={250}
               />
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.chipsTipoMemoria}>
-                {(['OBJETIVO', 'PREFERENCIA', 'FATO'] as MemoriaIA['tipo'][]).map(tipo => (
+                {(['FATO', 'PREFERENCIA', 'OBJETIVO', 'HABITO', 'RELACIONAMENTO', 'CONTEXTO'] as MemoriaIA['tipo'][]).map(tipo => (
                   <TouchableOpacity
                     key={tipo}
                     style={[
