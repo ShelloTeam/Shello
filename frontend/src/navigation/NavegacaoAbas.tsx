@@ -1,18 +1,18 @@
 // Navegação por Abas — NavegacaoAbas.tsx
 // Configura o BottomTabNavigator principal do Shello com 5 abas
 
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Feather } from '@expo/vector-icons';
-import { ShelloTema } from '../styles/tema';
+import React from "react";
+import { View, StyleSheet, TouchableOpacity, Image } from "react-native";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { Feather } from "@expo/vector-icons";
+import { ShelloTema } from "../styles/tema";
 
 // Telas das abas
-import HomeScreen from '../screens/HomeScreen';
-import NavegacaoDiario from './NavegacaoDiario';
-import TelaChat from '../screens/TelaChat';
-import TelaTarefas from '../screens/TelaTarefas';
-import TelaPerfil from '../screens/TelaPerfil';
+import HomeScreen from "../screens/HomeScreen";
+import NavegacaoDiario from "./NavegacaoDiario";
+import TelaChat from "../screens/TelaChat";
+import TelaTarefas from "../screens/TelaTarefas";
+import TelaPerfil from "../screens/TelaPerfil";
 
 const Tab = createBottomTabNavigator();
 
@@ -32,10 +32,18 @@ function BotaoChat({ children, onPress, focused }: BotaoChatProps) {
       accessibilityLabel="Abrir chat com Shello"
       accessibilityRole="button"
     >
-      <View style={[
-        estilos.botaoChatInterno,
-        { backgroundColor: focused ? ShelloTema.cores.marca : ShelloTema.cores.marcaClaro }
-      ]}>{children}</View>
+      <View
+        style={[
+          estilos.botaoChatInterno,
+          {
+            backgroundColor: focused
+              ? ShelloTema.cores.marca
+              : ShelloTema.cores.marcaClaro,
+          },
+        ]}
+      >
+        {children}
+      </View>
     </TouchableOpacity>
   );
 }
@@ -50,60 +58,62 @@ export default function NavegacaoAbas() {
         tabBarInactiveTintColor: ShelloTema.cores.textoS,
         tabBarStyle: estilos.barraAbas,
         tabBarLabelStyle: estilos.rotuloAba,
+        tabBarHideOnKeyboard: true,
         tabBarIcon: ({ color, focused }) => {
           const tamanho = 22;
 
           const icones: Record<string, keyof typeof Feather.glyphMap> = {
-            HomeTab: 'home',
-            DiarioTab: 'book-open',
-            ChatTab: 'zap',
-            TarefasTab: 'check-square',
-            PerfilTab: 'user',
+            HomeTab: "home",
+            DiarioTab: "book-open",
+            ChatTab: "zap",
+            TarefasTab: "check-square",
+            PerfilTab: "user",
           };
 
-          const nomeIcone = icones[route.name] ?? 'circle';
+          const nomeIcone = icones[route.name] ?? "circle";
 
-          if (route.name === 'ChatTab') {
+          if (route.name === "ChatTab") {
             return (
               <Image
-                source={require('../../assets/logoshello.jpeg')}
-                style={{ width: tamanho, height: tamanho, borderRadius: tamanho / 2 }}
+                source={require("../../assets/logoshello.jpeg")}
+                style={{
+                  width: tamanho,
+                  height: tamanho,
+                  borderRadius: tamanho / 2,
+                }}
                 resizeMode="cover"
               />
             );
           }
 
-          return (
-            <Feather
-              name={nomeIcone}
-              size={tamanho}
-              color={color}
-            />
-          );
+          return <Feather name={nomeIcone} size={tamanho} color={color} />;
         },
       })}
     >
       <Tab.Screen
         name="HomeTab"
         component={HomeScreen}
-        options={{ tabBarLabel: 'Início' }}
+        options={{ tabBarLabel: "Início" }}
       />
       <Tab.Screen
         name="DiarioTab"
         component={NavegacaoDiario}
-        options={{ tabBarLabel: 'Diário' }}
+        options={{ tabBarLabel: "Diário" }}
       />
       <Tab.Screen
         name="ChatTab"
         component={TelaChat}
         options={{
-          tabBarLabel: 'Shello',
+          tabBarLabel: "Shello",
           tabBarButton: (props) => {
             const focused = props.accessibilityState?.selected ?? false;
             return (
-              <BotaoChat onPress={props.onPress as () => void} focused={focused}>
+              <BotaoChat
+                onPress={props.onPress as () => void}
+                focused={focused}
+              >
                 <Image
-                  source={require('../../assets/logoshello.jpeg')}
+                  source={require("../../assets/logoshello.jpeg")}
                   style={{ width: 56, height: 56, borderRadius: 28 }}
                   resizeMode="cover"
                 />
@@ -115,12 +125,12 @@ export default function NavegacaoAbas() {
       <Tab.Screen
         name="TarefasTab"
         component={TelaTarefas}
-        options={{ tabBarLabel: 'Tarefas' }}
+        options={{ tabBarLabel: "Tarefas" }}
       />
       <Tab.Screen
         name="PerfilTab"
         component={TelaPerfil}
-        options={{ tabBarLabel: 'Perfil' }}
+        options={{ tabBarLabel: "Perfil" }}
       />
     </Tab.Navigator>
   );
@@ -135,7 +145,7 @@ const estilos = StyleSheet.create({
     paddingBottom: 10,
     paddingTop: 8,
     // Sombra sutil
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -143,21 +153,21 @@ const estilos = StyleSheet.create({
   },
   rotuloAba: {
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: "500",
     marginTop: 2,
   },
   botaoChat: {
     top: -20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   botaoChatInterno: {
     width: 64,
     height: 64,
     borderRadius: 32,
     backgroundColor: ShelloTema.cores.marca,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     // Sombra do botão central
     shadowColor: ShelloTema.cores.marca,
     shadowOffset: { width: 0, height: 4 },
