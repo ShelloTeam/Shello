@@ -112,45 +112,67 @@ export default function TelaAutenticacao({ navigation }: TelaAutenticacaoProps) 
 
   const handleAcaoPrincipal = useCallback(async () => {
     if (carregando) return;
-    setCarregando(true);
     setErroMensagem(null);
+
+    const emailValido = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
+    const senhaForte = (s: string) =>
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&_\-#])[A-Za-z\d@$!%*?&_\-#]{8,}$/.test(s);
+
+    // Validação client-side
+    if (formularioAtivo === 'login') {
+      if (!camposLogin.email.trim()) { setErroMensagem('Preencha o e-mail.'); return; }
+      if (!emailValido(camposLogin.email)) { setErroMensagem('Digite um e-mail válido.'); return; }
+      if (!camposLogin.senha) { setErroMensagem('Preencha a senha.'); return; }
+    } else if (formularioAtivo === 'cadastro') {
+      if (!camposCadastro.nome.trim()) { setErroMensagem('Preencha seu nome.'); return; }
+      if (!camposCadastro.email.trim()) { setErroMensagem('Preencha o e-mail.'); return; }
+      if (!emailValido(camposCadastro.email)) { setErroMensagem('Digite um e-mail válido.'); return; }
+      if (!senhaForte(camposCadastro.senha)) {
+        setErroMensagem('Senha deve ter 8+ caracteres, maiúscula, minúscula, número e símbolo (@$!%*?&_-#).');
+        return;
+      }
+      if (camposCadastro.senha !== camposCadastro.confirmarSenha) { setErroMensagem('As senhas não coincidem.'); return; }
+    } else if (formularioAtivo === 'recuperar') {
+      if (!camposRecuperar.email.trim() || !emailValido(camposRecuperar.email)) {
+        setErroMensagem('Digite um e-mail válido.');
+        return;
+      }
+    }
+
+    setCarregando(true);
 
     try {
       if (formularioAtivo === 'login') {
-        const user = await login(camposLogin.email, camposLogin.senha);
+        const user = await login(camposLogin.email.trim(), camposLogin.senha);
         definirUsuario(user.nome, false);
         await recarregarDados();
 
       } else if (formularioAtivo === 'cadastro') {
-        if (camposCadastro.senha !== camposCadastro.confirmarSenha) {
-          setErroMensagem('As senhas não coincidem.');
-          return;
-        }
-        const user = await register(camposCadastro.nome, camposCadastro.email, camposCadastro.senha);
+        const user = await register(camposCadastro.nome.trim(), camposCadastro.email.trim(), camposCadastro.senha);
         definirUsuario(user.nome, false);
         navigation.navigate('Onboarding');
 
       } else if (formularioAtivo === 'recuperar') {
-        await api.post('/api/v1/auth/password-reset/request', { email: camposRecuperar.email });
+        await api.post('/api/v1/auth/password-reset/request', { email: camposRecuperar.email.trim() });
         setErroMensagem('Se o e-mail estiver cadastrado, você receberá um link em breve.');
       }
     } catch (err: any) {
       const detail = err?.response?.data?.detail;
+      const status = err?.response?.status;
 
       let mensagem = 'Ocorreu um erro. Tente novamente.';
 
       if (typeof detail === 'string') {
         mensagem = detail;
       } else if (Array.isArray(detail) && detail.length > 0) {
-        const erro = detail[0];
-
-        if (erro.loc?.includes('email')) {
-          mensagem = 'Digite um e-mail válido.';
-        } else if (erro.loc?.includes('password') || erro.loc?.includes('senha')) {
-          mensagem = 'Senha inválida.';
-        } else {
-          mensagem = erro.msg ?? mensagem;
-        }
+        const primo = detail[0];
+        if (primo.loc?.includes('email')) mensagem = 'Digite um e-mail válido.';
+        else if (primo.loc?.includes('password') || primo.loc?.includes('senha')) mensagem = 'Senha inválida.';
+        else mensagem = primo.msg ?? mensagem;
+      } else if (status === 401) {
+        mensagem = 'E-mail ou senha incorretos.';
+      } else if (!err?.response) {
+        mensagem = 'Sem conexão. Verifique sua internet.';
       }
 
       setErroMensagem(mensagem);
