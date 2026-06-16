@@ -301,7 +301,8 @@ export default function TelaChat(): React.JSX.Element {
     salvarConversa();
   }, [mensagens, conversationId, conversaSavedLoaded]);
 
-  const mostrarSugestoes = mensagens.length < 3;
+  // Mostra sugestões apenas se só tiver a mensagem de boas-vindas E o usuário não estiver digitando
+  const mostrarSugestoes = mensagens.length <= 1 && inputTexto.trim().length === 0;
 
   // ── Enviar mensagem ──────────────────────────────────────────────────────
   const enviarMensagem = useCallback(
@@ -427,30 +428,6 @@ export default function TelaChat(): React.JSX.Element {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-        {/* ── Sugestões rápidas (só quando teclado fechado) ────────────── */}
-        {mostrarSugestoes && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={estilos.sugestoesScroll}
-            contentContainerStyle={estilos.sugestoesContent}
-          >
-            {SUGESTOES.map((s) => (
-              <TouchableOpacity
-                key={s.id}
-                style={estilos.cardSugestao}
-                onPress={() => enviarMensagem(s.texto)}
-                activeOpacity={0.75}
-              >
-                <View style={estilos.cardSugestaoIcone}>
-                  <Feather name={s.icone} size={17} color={ShelloTema.cores.marca} />
-                </View>
-                <Text style={estilos.cardSugestaoTexto}>{s.texto}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        )}
-
         {/* ── Lista de mensagens ────────────────────────────────────────── */}
         <FlatList
           ref={flatListRef}
@@ -481,6 +458,30 @@ export default function TelaChat(): React.JSX.Element {
             <Feather name="check-circle" size={15} color={ShelloTema.cores.marca} />
             <Text style={estilos.feedbackTarefaTexto}>  Tarefa adicionada à sua jornada!</Text>
           </View>
+        )}
+
+        {/* ── Sugestões rápidas (acima do input) ───────────────────────── */}
+        {mostrarSugestoes && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={estilos.sugestoesScroll}
+            contentContainerStyle={estilos.sugestoesContent}
+          >
+            {SUGESTOES.map((s) => (
+              <TouchableOpacity
+                key={s.id}
+                style={estilos.cardSugestao}
+                onPress={() => enviarMensagem(s.texto)}
+                activeOpacity={0.75}
+              >
+                <View style={estilos.cardSugestaoIcone}>
+                  <Feather name={s.icone} size={17} color={ShelloTema.cores.marca} />
+                </View>
+                <Text style={estilos.cardSugestaoTexto}>{s.texto}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         )}
 
         {/* ── Barra de entrada ─────────────────────────────────────────── */}
@@ -600,7 +601,7 @@ const estilos = StyleSheet.create({
   botaoNovoChatTexto: { fontSize: 13, color: '#FFF', fontWeight: '700' },
 
   // Sugestões
-  sugestoesScroll: { flexGrow: 0, paddingVertical: ShelloTema.espacamento.md },
+  sugestoesScroll: { flexGrow: 0, paddingBottom: ShelloTema.espacamento.md, paddingTop: ShelloTema.espacamento.sm },
   sugestoesContent: { paddingHorizontal: ShelloTema.espacamento.md },
   cardSugestao: {
     backgroundColor: ShelloTema.cores.superficie,
@@ -779,7 +780,7 @@ const estilos = StyleSheet.create({
     alignItems: 'flex-end',
     paddingHorizontal: ShelloTema.espacamento.md,
     paddingTop: ShelloTema.espacamento.md,
-    paddingBottom: ShelloTema.espacamento.lg,
+    paddingBottom: 36, // Aumentado para afastar do tab navigator
     backgroundColor: ShelloTema.cores.fundo,
     gap: ShelloTema.espacamento.sm,
     borderTopWidth: 1,

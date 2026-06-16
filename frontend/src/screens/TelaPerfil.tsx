@@ -499,6 +499,7 @@ export default function TelaPerfil() {
     dadosOnboarding,
     definirUsuario,
     recarregarMemorias,
+    adicionarMemoria,
   } = useShello();
 
   const [nomeReferencia, setNomeReferencia] = useState(
@@ -512,6 +513,9 @@ export default function TelaPerfil() {
   const [nomeReal, setNomeReal] = useState('');
   const [modalMemoriasVisivel, setModalMemoriasVisivel] = useState(false);
   const [buscaMemoria, setBuscaMemoria] = useState('');
+  const [novaMemoriaTexto, setNovaMemoriaTexto] = useState('');
+  const [novaMemoriaTipo, setNovaMemoriaTipo] = useState<MemoriaIA['tipo']>('FATO');
+  const [salvandoNovaMemoria, setSalvandoNovaMemoria] = useState(false);
   const [dialogConfig, setDialogConfig] = useState<{
     visible: boolean;
     title: string;
@@ -560,6 +564,21 @@ export default function TelaPerfil() {
     },
     [removerMemoria]
   );
+
+  const handleAdicionarMemoria = useCallback(async () => {
+    const textoTrimado = novaMemoriaTexto.trim();
+    if (!textoTrimado) return;
+    setSalvandoNovaMemoria(true);
+    try {
+      await adicionarMemoria(textoTrimado, novaMemoriaTipo);
+      setNovaMemoriaTexto('');
+      setNovaMemoriaTipo('FATO'); // Reseta
+    } catch (erro) {
+      console.error('Erro ao criar memória:', erro);
+    } finally {
+      setSalvandoNovaMemoria(false);
+    }
+  }, [novaMemoriaTexto, novaMemoriaTipo, adicionarMemoria]);
 
   const handleSalvarNome = useCallback(async () => {
     const nomeTrimado = nomeReferencia.trim();
@@ -911,6 +930,53 @@ export default function TelaPerfil() {
                 autoCapitalize="none"
                 clearButtonMode="while-editing"
               />
+            </View>
+
+            {/* Formulário Criar Memória */}
+            <View style={estilos.formNovaMemoria}>
+              <Text style={estilos.formNovaMemoriaLabel}>Adicionar novo contexto</Text>
+              <TextInput
+                style={estilos.inputNovaMemoria}
+                placeholder="Ex: Quero aprender francês..."
+                placeholderTextColor={ShelloTema.cores.textoS}
+                value={novaMemoriaTexto}
+                onChangeText={setNovaMemoriaTexto}
+                multiline
+                maxLength={250}
+              />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={estilos.chipsTipoMemoria}>
+                {(['OBJETIVO', 'PREFERENCIA', 'FATO'] as MemoriaIA['tipo'][]).map(tipo => (
+                  <TouchableOpacity
+                    key={tipo}
+                    style={[
+                      estilos.chipTipo,
+                      novaMemoriaTipo === tipo && estilos.chipTipoAtivo
+                    ]}
+                    onPress={() => setNovaMemoriaTipo(tipo)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[
+                      estilos.chipTipoTexto,
+                      novaMemoriaTipo === tipo && estilos.chipTipoTextoAtivo
+                    ]}>
+                      {CONFIGURACAO_TIPO[tipo]?.rotulo || tipo}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              {novaMemoriaTexto.trim().length > 0 && (
+                <TouchableOpacity
+                  style={[estilos.botaoAdicionarMemoria, salvandoNovaMemoria && { opacity: 0.6 }]}
+                  onPress={handleAdicionarMemoria}
+                  disabled={salvandoNovaMemoria}
+                  activeOpacity={0.8}
+                >
+                  <Feather name={salvandoNovaMemoria ? "loader" : "plus"} size={16} color="#FFF" />
+                  <Text style={estilos.botaoAdicionarMemoriaTexto}>
+                    {salvandoNovaMemoria ? 'Salvando...' : 'Salvar Memória'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Lista */}
@@ -1271,9 +1337,74 @@ const estilos = StyleSheet.create({
     gap: ShelloTema.espacamento.sm,
   },
   modalListaVaziaTexto: {
-    fontSize: 13,
+    fontSize: 14,
     color: ShelloTema.cores.textoS,
-    textAlign: 'center',
+  },
+
+  // Form Nova Memória
+  formNovaMemoria: {
+    backgroundColor: ShelloTema.cores.fundo,
+    borderRadius: ShelloTema.forma.bordaMedia,
+    padding: ShelloTema.espacamento.md,
+    marginBottom: ShelloTema.espacamento.md,
+    borderWidth: 1,
+    borderColor: ShelloTema.cores.marcaClaro,
+  },
+  formNovaMemoriaLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: ShelloTema.cores.marca,
+    marginBottom: ShelloTema.espacamento.sm,
+  },
+  inputNovaMemoria: {
+    backgroundColor: ShelloTema.cores.superficie,
+    borderRadius: ShelloTema.forma.bordaPequena,
+    paddingHorizontal: ShelloTema.espacamento.md,
+    paddingVertical: ShelloTema.espacamento.sm,
+    fontSize: 14,
+    color: ShelloTema.cores.textoP,
+    minHeight: 60,
+    marginBottom: ShelloTema.espacamento.sm,
+  },
+  chipsTipoMemoria: {
+    flexDirection: 'row',
+    gap: ShelloTema.espacamento.xs,
+    paddingBottom: ShelloTema.espacamento.sm,
+  },
+  chipTipo: {
+    backgroundColor: ShelloTema.cores.superficie,
+    borderRadius: ShelloTema.forma.bordaPill,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: ShelloTema.cores.marcaClaro,
+  },
+  chipTipoAtivo: {
+    backgroundColor: ShelloTema.cores.marcaClaro,
+    borderColor: ShelloTema.cores.marca,
+  },
+  chipTipoTexto: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: ShelloTema.cores.textoS,
+  },
+  chipTipoTextoAtivo: {
+    color: ShelloTema.cores.marca,
+  },
+  botaoAdicionarMemoria: {
+    backgroundColor: ShelloTema.cores.marca,
+    borderRadius: ShelloTema.forma.bordaPill,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: ShelloTema.espacamento.xs,
+  },
+  botaoAdicionarMemoriaTexto: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
   botaoVerTodas: {
     flexDirection: 'row',

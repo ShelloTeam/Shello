@@ -1,7 +1,7 @@
 // HomeScreen.tsx — Tela inicial limpa do Shello
 // Saudação personalizada, badges de progresso e atalhos rápidos (sem input inline)
 
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
-  Animated,
+  TextInput,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -17,6 +20,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { ShelloTema } from '../styles/tema';
 import { useShello } from '../contexts/ShelloContext';
+import { MemoriaIA } from '../types';
 
 
 
@@ -86,8 +90,13 @@ function obterSaudacao(): string {
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
 export default function HomeScreen() {
-  const { nomeUsuario, entradas } = useShello();
+  const { nomeUsuario, entradas, adicionarMemoria } = useShello();
   const navigation = useNavigation<RootTabNavigation>();
+
+  const [modalContextoVisivel, setModalContextoVisivel] = useState(false);
+  const [novoContextoTexto, setNovoContextoTexto] = useState('');
+  const [novoContextoTipo, setNovoContextoTipo] = useState<MemoriaIA['tipo']>('FATO');
+  const [salvandoContexto, setSalvandoContexto] = useState(false);
 
 
 
@@ -103,6 +112,22 @@ export default function HomeScreen() {
   const irParaTarefas = useCallback(() => navigation.navigate('TarefasTab'), [navigation]);
   const irParaChat = useCallback(() => navigation.navigate('ChatTab'), [navigation]);
   const irParaPerfil = useCallback(() => navigation.navigate('PerfilTab'), [navigation]);
+
+  const handleSalvarContexto = useCallback(async () => {
+    const textoTrimado = novoContextoTexto.trim();
+    if (!textoTrimado) return;
+    setSalvandoContexto(true);
+    try {
+      await adicionarMemoria(textoTrimado, novoContextoTipo);
+      setNovoContextoTexto('');
+      setNovoContextoTipo('FATO');
+      setModalContextoVisivel(false);
+    } catch (erro) {
+      console.error('Erro ao salvar contexto:', erro);
+    } finally {
+      setSalvandoContexto(false);
+    }
+  }, [novoContextoTexto, novoContextoTipo, adicionarMemoria]);
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -234,9 +259,87 @@ export default function HomeScreen() {
               <Text style={estilos.atalhoSubtexto}>Sua evolução e memórias</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Atalho de Largura Total — Adicionar Contexto */}
+          <TouchableOpacity
+            style={estilos.cardAtalhoContexto}
+            onPress={() => setModalContextoVisivel(true)}
+            activeOpacity={0.85}
+          >
+            <View style={estilos.circuloIconeContexto}>
+              <Feather name="plus-circle" size={24} color="#FFF" />
+            </View>
+            <View style={estilos.atalhoContextoTextos}>
+              <Text style={estilos.atalhoTituloContexto}>Adicionar Contexto</Text>
+              <Text style={estilos.atalhoSubtextoContexto}>Ensine algo novo ao Shello sobre você</Text>
+            </View>
+          </TouchableOpacity>
         </View>
 
       </ScrollView>
+
+      {/* ── Modal Adicionar Contexto ────────────────────────────────────────── */}
+      <Modal
+        visible={modalContextoVisivel}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setModalContextoVisivel(false)}
+      >
+        <KeyboardAvoidingView 
+          style={estilos.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={estilos.modalCaixa}>
+            <View style={estilos.modalCabecalho}>
+              <Text style={estilos.modalTitulo}>Novo Contexto</Text>
+              <TouchableOpacity onPress={() => setModalContextoVisivel(false)} style={estilos.modalFechar}>
+                <Feather name="x" size={20} color={ShelloTema.cores.textoS} />
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              style={estilos.inputNovaMemoria}
+              placeholder="Ex: Quero aprender francês..."
+              placeholderTextColor={ShelloTema.cores.textoS}
+              value={novoContextoTexto}
+              onChangeText={setNovoContextoTexto}
+              multiline
+              maxLength={250}
+              autoFocus
+            />
+
+            <View style={estilos.chipsTipoMemoria}>
+              {(['OBJETIVO', 'PREFERENCIA', 'FATO'] as MemoriaIA['tipo'][]).map(tipo => {
+                const rotulos: any = { OBJETIVO: 'Meta Atual', PREFERENCIA: 'Preferência', FATO: 'Fato/Estilo de vida' };
+                return (
+                  <TouchableOpacity
+                    key={tipo}
+                    style={[estilos.chipTipo, novoContextoTipo === tipo && estilos.chipTipoAtivo]}
+                    onPress={() => setNovoContextoTipo(tipo)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[estilos.chipTipoTexto, novoContextoTipo === tipo && estilos.chipTipoTextoAtivo]}>
+                      {rotulos[tipo] || tipo}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <TouchableOpacity
+              style={[estilos.botaoSalvarContexto, (!novoContextoTexto.trim() || salvandoContexto) && { opacity: 0.6 }]}
+              onPress={handleSalvarContexto}
+              disabled={!novoContextoTexto.trim() || salvandoContexto}
+              activeOpacity={0.8}
+            >
+              <Text style={estilos.botaoSalvarContextoTexto}>
+                {salvandoContexto ? 'Salvando...' : 'Salvar Contexto'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -408,5 +511,114 @@ const estilos = StyleSheet.create({
   },
   atalhoTituloPessego: {
     color: ShelloTema.cores.pessegoDark,
+  },
+
+  // ── Atalho Adicionar Contexto ──
+  cardAtalhoContexto: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: ShelloTema.cores.marca,
+    borderRadius: ShelloTema.forma.bordaMedia,
+    padding: ShelloTema.espacamento.md,
+    ...ShelloTema.sombra.suave,
+  },
+  circuloIconeContexto: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: ShelloTema.espacamento.md,
+  },
+  atalhoContextoTextos: {
+    flex: 1,
+  },
+  atalhoTituloContexto: {
+    fontSize: ShelloTema.tipografia.tamanhos.medio,
+    fontWeight: ShelloTema.tipografia.pesos.negrito,
+    color: '#FFF',
+    marginBottom: 2,
+  },
+  atalhoSubtextoContexto: {
+    fontSize: ShelloTema.tipografia.tamanhos.minusculo,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+
+  // ── Modal Adicionar Contexto ──
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    padding: ShelloTema.espacamento.lg,
+  },
+  modalCaixa: {
+    backgroundColor: ShelloTema.cores.superficie,
+    borderRadius: ShelloTema.forma.bordaMedia,
+    padding: ShelloTema.espacamento.lg,
+    ...ShelloTema.sombra.media,
+  },
+  modalCabecalho: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: ShelloTema.espacamento.md,
+  },
+  modalTitulo: {
+    fontSize: ShelloTema.tipografia.tamanhos.medio,
+    fontWeight: ShelloTema.tipografia.pesos.negrito,
+    color: ShelloTema.cores.textoP,
+  },
+  modalFechar: {
+    padding: ShelloTema.espacamento.xs,
+  },
+  inputNovaMemoria: {
+    backgroundColor: ShelloTema.cores.fundo,
+    borderRadius: ShelloTema.forma.bordaPequena,
+    paddingHorizontal: ShelloTema.espacamento.md,
+    paddingVertical: ShelloTema.espacamento.sm,
+    fontSize: 14,
+    color: ShelloTema.cores.textoP,
+    minHeight: 60,
+    marginBottom: ShelloTema.espacamento.md,
+    borderWidth: 1,
+    borderColor: ShelloTema.cores.marcaClaro,
+  },
+  chipsTipoMemoria: {
+    flexDirection: 'row',
+    gap: ShelloTema.espacamento.xs,
+    marginBottom: ShelloTema.espacamento.md,
+  },
+  chipTipo: {
+    backgroundColor: ShelloTema.cores.fundo,
+    borderRadius: ShelloTema.forma.bordaPill,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: ShelloTema.cores.marcaClaro,
+  },
+  chipTipoAtivo: {
+    backgroundColor: ShelloTema.cores.marcaClaro,
+    borderColor: ShelloTema.cores.marca,
+  },
+  chipTipoTexto: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: ShelloTema.cores.textoS,
+  },
+  chipTipoTextoAtivo: {
+    color: ShelloTema.cores.marca,
+  },
+  botaoSalvarContexto: {
+    backgroundColor: ShelloTema.cores.marca,
+    borderRadius: ShelloTema.forma.bordaPill,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  botaoSalvarContextoTexto: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
