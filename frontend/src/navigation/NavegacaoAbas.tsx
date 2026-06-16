@@ -2,8 +2,8 @@
 // Configura o BottomTabNavigator principal do Shello com 5 abas
 
 import React from "react";
-import { View, StyleSheet, TouchableOpacity, Image } from "react-native";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { View, StyleSheet, TouchableOpacity, Image, Text, Animated } from "react-native";
+import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
 import { Feather } from "@expo/vector-icons";
 import { ShelloTema } from "../styles/tema";
 
@@ -14,7 +14,7 @@ import TelaChat from "../screens/TelaChat";
 import TelaTarefas from "../screens/TelaTarefas";
 import TelaPerfil from "../screens/TelaPerfil";
 
-const Tab = createBottomTabNavigator();
+const Tab = createMaterialTopTabNavigator();
 
 // ─── Botão central customizado do Chat ────────────────────────────────────
 interface BotaoChatProps {
@@ -48,47 +48,102 @@ function BotaoChat({ children, onPress, focused }: BotaoChatProps) {
   );
 }
 
+// ─── Custom Tab Bar ────────────────────────────────────────────────────────
+function CustomTabBar({ state, descriptors, navigation }: any) {
+  return (
+    <View style={estilos.barraAbas}>
+      {state.routes.map((route: any, index: number) => {
+        const { options } = descriptors[route.key];
+        const label =
+          options.tabBarLabel !== undefined
+            ? options.tabBarLabel
+            : options.title !== undefined
+            ? options.title
+            : route.name;
+
+        const isFocused = state.index === index;
+
+        const onPress = () => {
+          const event = navigation.emit({
+            type: "tabPress",
+            target: route.key,
+            canPreventDefault: true,
+          });
+
+          if (!isFocused && !event.defaultPrevented) {
+            navigation.navigate(route.name);
+          }
+        };
+
+        const icones: Record<string, keyof typeof Feather.glyphMap> = {
+          HomeTab: "home",
+          DiarioTab: "book-open",
+          ChatTab: "zap",
+          TarefasTab: "check-square",
+          PerfilTab: "user",
+        };
+        const nomeIcone = icones[route.name] || "circle";
+
+        if (route.name === "ChatTab") {
+          return (
+            <BotaoChat key={route.key} onPress={onPress} focused={isFocused}>
+              <Image
+                source={require("../../assets/logoshello.jpeg")}
+                style={{ width: 56, height: 56, borderRadius: 28 }}
+                resizeMode="cover"
+              />
+            </BotaoChat>
+          );
+        }
+
+        return (
+          <TouchableOpacity
+            key={route.key}
+            accessibilityRole="button"
+            accessibilityState={isFocused ? { selected: true } : {}}
+            accessibilityLabel={options.tabBarAccessibilityLabel}
+            testID={options.tabBarTestID}
+            onPress={onPress}
+            style={estilos.abaComum}
+            activeOpacity={0.7}
+          >
+            <View
+              style={[
+                estilos.iconeWrapper,
+                isFocused && estilos.iconeWrapperAtivo,
+              ]}
+            >
+              <Feather
+                name={nomeIcone}
+                size={22}
+                color={isFocused ? ShelloTema.cores.marca : ShelloTema.cores.textoS}
+              />
+            </View>
+            <Text
+              style={[
+                estilos.rotuloAba,
+                isFocused && estilos.rotuloAbaAtivo,
+              ]}
+            >
+              {label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
 // ─── Navegador de Abas ─────────────────────────────────────────────────────
 export default function NavegacaoAbas() {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarActiveTintColor: ShelloTema.cores.marca,
-        tabBarInactiveTintColor: ShelloTema.cores.textoS,
-        tabBarStyle: estilos.barraAbas,
-        tabBarLabelStyle: estilos.rotuloAba,
-        tabBarHideOnKeyboard: true,
-        tabBarIcon: ({ color, focused }) => {
-          const tamanho = 22;
-
-          const icones: Record<string, keyof typeof Feather.glyphMap> = {
-            HomeTab: "home",
-            DiarioTab: "book-open",
-            ChatTab: "zap",
-            TarefasTab: "check-square",
-            PerfilTab: "user",
-          };
-
-          const nomeIcone = icones[route.name] ?? "circle";
-
-          if (route.name === "ChatTab") {
-            return (
-              <Image
-                source={require("../../assets/logoshello.jpeg")}
-                style={{
-                  width: tamanho,
-                  height: tamanho,
-                  borderRadius: tamanho / 2,
-                }}
-                resizeMode="cover"
-              />
-            );
-          }
-
-          return <Feather name={nomeIcone} size={tamanho} color={color} />;
-        },
-      })}
+      tabBarPosition="bottom"
+      tabBar={(props) => <CustomTabBar {...props} />}
+      screenOptions={{
+        swipeEnabled: true, // Ativa o "arrastar para o lado"
+        lazy: true,
+      }}
     >
       <Tab.Screen
         name="HomeTab"
@@ -103,24 +158,7 @@ export default function NavegacaoAbas() {
       <Tab.Screen
         name="ChatTab"
         component={TelaChat}
-        options={{
-          tabBarLabel: "Shello",
-          tabBarButton: (props) => {
-            const focused = props.accessibilityState?.selected ?? false;
-            return (
-              <BotaoChat
-                onPress={props.onPress as () => void}
-                focused={focused}
-              >
-                <Image
-                  source={require("../../assets/logoshello.jpeg")}
-                  style={{ width: 56, height: 56, borderRadius: 28 }}
-                  resizeMode="cover"
-                />
-              </BotaoChat>
-            );
-          },
-        }}
+        options={{ tabBarLabel: "Shello" }}
       />
       <Tab.Screen
         name="TarefasTab"
@@ -140,39 +178,57 @@ export default function NavegacaoAbas() {
 const estilos = StyleSheet.create({
   barraAbas: {
     backgroundColor: ShelloTema.cores.superficie,
-    borderTopWidth: 0,
-    height: 72,
-    paddingBottom: 10,
+    flexDirection: 'row',
+    height: 78,
+    paddingBottom: 16, // Espaço para Home Indicator do iOS
     paddingTop: 8,
-    // Sombra sutil
+    // Sombra
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 8,
   },
+  abaComum: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconeWrapper: {
+    width: 44,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  iconeWrapperAtivo: {
+    backgroundColor: `${ShelloTema.cores.marca}1A`, // 10% opacidade da cor principal
+  },
   rotuloAba: {
-    fontSize: 11,
-    fontWeight: "500",
-    marginTop: 2,
+    fontSize: 10,
+    fontFamily: ShelloTema.tipografia.corpo,
+    color: ShelloTema.cores.textoS,
+  },
+  rotuloAbaAtivo: {
+    color: ShelloTema.cores.marca,
+    fontWeight: ShelloTema.tipografia.pesos.negrito,
   },
   botaoChat: {
-    top: -20,
+    top: -24,
     justifyContent: "center",
     alignItems: "center",
   },
   botaoChatInterno: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: ShelloTema.cores.marca,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: "center",
     alignItems: "center",
-    // Sombra do botão central
     shadowColor: ShelloTema.cores.marca,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 8,
+    elevation: 6,
   },
 });
