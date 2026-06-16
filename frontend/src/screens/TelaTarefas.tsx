@@ -83,22 +83,6 @@ function corFundoRotina(periodo: Rotina['periodo']): string {
   }
 }
 
-// ─── Rotinas estáticas de fallback ─────────────────────────────────────────────
-
-const ROTINAS_PADRAO: Rotina[] = [
-  {
-    id: 'padrao-manha',
-    titulo: 'Rotina Matinal',
-    atividades: ['Acordar às 7h', 'Meditar por 10 min', 'Escrever no diário'],
-    periodo: 'manha',
-  },
-  {
-    id: 'padrao-tarde',
-    titulo: 'Reset do Meio-dia',
-    atividades: ['Alongamento de 5 min', 'Revisão de tarefas', 'Beber água'],
-    periodo: 'tarde',
-  },
-];
 
 // ─── Componente: ItemTarefa ────────────────────────────────────────────────────
 
@@ -448,24 +432,49 @@ function ModalNovaTarefa({
   );
 }
 
+// ─── Componente: EstadoVazioRotinas ───────────────────────────────────────────
+
+function EstadoVazioRotinas(): React.JSX.Element {
+  return (
+    <View style={estilos.rotinaVazioContainer}>
+      <Feather name="repeat" size={28} color={ShelloTema.cores.textoS} />
+      <Text style={estilos.rotinaVazioTexto}>
+        Nenhuma rotina ainda. Crie uma no perfil!
+      </Text>
+    </View>
+  );
+}
+
 // ─── Componente: CardRotina ────────────────────────────────────────────────────
 
 interface CardRotinaProps {
   rotina: Rotina;
+  onExcluir: (id: string) => void;
 }
 
-function CardRotina({ rotina }: CardRotinaProps): React.JSX.Element {
+function CardRotina({ rotina, onExcluir }: CardRotinaProps): React.JSX.Element {
   const icone    = iconeRotina(rotina.periodo);
   const corFundo = corFundoRotina(rotina.periodo);
+  const isPadrao = rotina.id.startsWith('padrao-');
 
   return (
     <View style={[estilos.cardRotina, { backgroundColor: corFundo }]}>
-      {/* Cabeçalho: ícone em círculo branco + título */}
+      {/* Cabeçalho: ícone em círculo branco + título + lixeira */}
       <View style={estilos.cardRotinaCabecalho}>
         <View style={estilos.cardRotinaIconeWrapper}>
           <Feather name={icone} size={20} color={ShelloTema.cores.marca} />
         </View>
         <Text style={estilos.cardRotinaTitulo}>{rotina.titulo}</Text>
+        {!isPadrao && (
+          <TouchableOpacity
+            onPress={() => onExcluir(rotina.id)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel={`Excluir rotina ${rotina.titulo}`}
+            accessibilityRole="button"
+          >
+            <Feather name="trash-2" size={16} color={ShelloTema.cores.erro} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Lista bulleted de atividades */}
@@ -523,15 +532,10 @@ function EstadoVazio(): React.JSX.Element {
 // ─── Tela Principal: TelaTarefas ───────────────────────────────────────────────
 
 export default function TelaTarefas(): React.JSX.Element {
-  const { tarefas, rotinas, adicionarTarefa, alternarTarefa, removerTarefa } = useShello();
+  const { tarefas, rotinas, adicionarTarefa, alternarTarefa, removerTarefa, removerRotina } = useShello();
   const [modalVisivel, setModalVisivel] = useState(false);
   const [tarefaExcluir, setTarefaExcluir] = useState<string | null>(null);
-
-  // Decide quais rotinas exibir: reais do contexto ou fallback padrão
-  const rotinasExibidas = useMemo<Rotina[]>(
-    () => (rotinas.length > 0 ? rotinas : ROTINAS_PADRAO),
-    [rotinas]
-  );
+  const [rotinaExcluir, setRotinaExcluir] = useState<string | null>(null);
 
   // Separação pendentes / concluídas
   const tarefasPendentes  = useMemo(() => tarefas.filter((t) => !t.concluida), [tarefas]);
@@ -562,6 +566,18 @@ export default function TelaTarefas(): React.JSX.Element {
       }
     }
   }, [tarefaExcluir, removerTarefa]);
+
+  const handleExcluirRotina = useCallback(async () => {
+    if (rotinaExcluir) {
+      try {
+        await removerRotina(rotinaExcluir);
+      } catch (e) {
+        console.error('Erro ao excluir rotina:', e);
+      } finally {
+        setRotinaExcluir(null);
+      }
+    }
+  }, [rotinaExcluir, removerRotina]);
 
   return (
     <SafeAreaView style={estilos.safeArea}>
@@ -657,15 +673,19 @@ export default function TelaTarefas(): React.JSX.Element {
           <View style={estilos.secaoCabecalho}>
             <Text style={estilos.secaoTitulo}>Rotinas Diárias</Text>
             <View style={estilos.rotinaBadge}>
-              <Text style={estilos.rotinaBadgeTexto}>{rotinasExibidas.length}</Text>
+              <Text style={estilos.rotinaBadgeTexto}>{rotinas.length}</Text>
             </View>
           </View>
 
-          <View style={estilos.listaRotinas}>
-            {rotinasExibidas.map((rotina) => (
-              <CardRotina key={rotina.id} rotina={rotina} />
-            ))}
-          </View>
+          {rotinas.length === 0 ? (
+            <EstadoVazioRotinas />
+          ) : (
+            <View style={estilos.listaRotinas}>
+              {rotinas.map((rotina) => (
+                <CardRotina key={rotina.id} rotina={rotina} onExcluir={setRotinaExcluir} />
+              ))}
+            </View>
+          )}
         </View>
 
         {/* Espaço final */}
@@ -679,7 +699,7 @@ export default function TelaTarefas(): React.JSX.Element {
         onAdicionar={handleAdicionarTarefa}
       />
 
-      {/* ── Dialog de exclusão ───────────────────────────────────────── */}
+      {/* ── Dialog de exclusão de tarefa ─────────────────────────────── */}
       <DialogShello
         visible={tarefaExcluir !== null}
         onClose={() => setTarefaExcluir(null)}
@@ -688,6 +708,18 @@ export default function TelaTarefas(): React.JSX.Element {
         confirmLabel="Excluir"
         cancelLabel="Cancelar"
         onConfirm={handleExcluirTarefa}
+        isDestructive
+      />
+
+      {/* ── Dialog de exclusão de rotina ─────────────────────────────── */}
+      <DialogShello
+        visible={rotinaExcluir !== null}
+        onClose={() => setRotinaExcluir(null)}
+        title="Excluir Rotina"
+        message="Deseja mesmo remover esta rotina?"
+        confirmLabel="Excluir"
+        cancelLabel="Cancelar"
+        onConfirm={handleExcluirRotina}
         isDestructive
       />
     </SafeAreaView>
@@ -992,6 +1024,21 @@ const estilos = StyleSheet.create({
   // ── Lista de rotinas ──────────────────────────────────────────────────────────
   listaRotinas: {
     gap: ShelloTema.espacamento.md,
+  },
+
+  // ── Estado vazio de rotinas ───────────────────────────────────────────────────
+  rotinaVazioContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: ShelloTema.espacamento.sm,
+    paddingVertical: ShelloTema.espacamento.md,
+    paddingHorizontal: ShelloTema.espacamento.sm,
+  },
+  rotinaVazioTexto: {
+    fontSize: 14,
+    color: ShelloTema.cores.textoS,
+    flex: 1,
+    lineHeight: 20,
   },
 
   // ── Card de rotina ────────────────────────────────────────────────────────────
