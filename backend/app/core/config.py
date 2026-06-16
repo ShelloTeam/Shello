@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     sentry_dsn: str = ""
     admin_key: str = ""
+    resend_api_key: str = ""
+    base_url: str = "https://shello-production.up.railway.app"
 
     jwt_algorithm: str = "HS256"
     jwt_expire_days: int = 7

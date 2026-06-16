@@ -6,6 +6,8 @@ from datetime import datetime, timedelta, timezone
 from app.repositories.user_repository import UserRepository
 from app.core.security import hash_password, verify_password, create_access_token
 from app.schemas.auth import UserCreate, UserLogin, PasswordResetRequest, PasswordResetConfirm
+from app.services.email_service import EmailService
+from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +17,9 @@ RESET_TOKEN_EXPIRE_HOURS = 1
 class AuthService:
     def __init__(self, repo: UserRepository) -> None:
         self._repo = repo
+        _settings = get_settings()
+        self._email_service = EmailService(api_key=_settings.resend_api_key)
+        self._base_url = _settings.base_url
 
     def register_user(self, user_data: UserCreate) -> str:
         logger.info("Iniciando cadastro para e-mail: [REDACTED]")
@@ -99,6 +104,12 @@ class AuthService:
             user_id=str(user["id"]),
             token_hash=token_hash,
             expires_at=expires_at,
+        )
+
+        reset_url = f"{self._base_url}/reset-password?token={raw_token}"
+        self._email_service.send_reset_email(
+            to_email=data.email,
+            reset_url=reset_url,
         )
 
         logger.info("Token de recuperação gerado: user_id=%s", user["id"])
