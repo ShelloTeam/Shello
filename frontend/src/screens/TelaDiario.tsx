@@ -8,7 +8,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
-} from 'react';
+} from "react";
 import {
   View,
   Text,
@@ -19,14 +19,15 @@ import {
   ListRenderItemInfo,
   TextInput,
   ScrollView,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { ShelloTema } from '../styles/tema';
-import { useShello } from '../contexts/ShelloContext';
-import { EntradaDiario } from '../types';
-import { DiarioStackParamList } from '../navigation/NavegacaoDiario';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { ShelloTema } from "../styles/tema";
+import { useShello } from "../contexts/ShelloContext";
+import { EntradaDiario } from "../types";
+import { DiarioStackParamList } from "../navigation/NavegacaoDiario";
+import DialogShello from "../components/DialogShello";
 
 // ─── Constantes ────────────────────────────────────────────────────────────────
 
@@ -34,7 +35,7 @@ const DURACAO_IA_LENDO_MS = 5000;
 
 // ─── Tipos locais ──────────────────────────────────────────────────────────────
 
-type Props = NativeStackScreenProps<DiarioStackParamList, 'ListaEntradas'>;
+type Props = NativeStackScreenProps<DiarioStackParamList, "ListaEntradas">;
 
 interface GrupoEntradas {
   titulo: string;
@@ -42,8 +43,8 @@ interface GrupoEntradas {
 }
 
 type ItemLista =
-  | { tipo: 'cabecalho'; titulo: string }
-  | { tipo: 'entrada'; entrada: EntradaDiario; iaLendo: boolean };
+  | { tipo: "cabecalho"; titulo: string }
+  | { tipo: "entrada"; entrada: EntradaDiario; iaLendo: boolean };
 
 // ─── Utilitários ───────────────────────────────────────────────────────────────
 
@@ -55,7 +56,7 @@ function inicioDoDia(data: Date): Date {
 
 function agruparEntradas(
   entradas: EntradaDiario[],
-  idIaLendo: string | null
+  idIaLendo: string | null,
 ): ItemLista[] {
   const agora = new Date();
   const hoje = inicioDoDia(agora);
@@ -65,10 +66,10 @@ function agruparEntradas(
   semanaAtras.setDate(semanaAtras.getDate() - 7);
 
   const grupos: GrupoEntradas[] = [
-    { titulo: 'Hoje', dados: [] },
-    { titulo: 'Ontem', dados: [] },
-    { titulo: 'Semana Passada', dados: [] },
-    { titulo: 'Mais Antigas', dados: [] },
+    { titulo: "Hoje", dados: [] },
+    { titulo: "Ontem", dados: [] },
+    { titulo: "Semana Passada", dados: [] },
+    { titulo: "Mais Antigas", dados: [] },
   ];
 
   entradas.forEach((entrada) => {
@@ -87,13 +88,13 @@ function agruparEntradas(
   const lista: ItemLista[] = [];
   grupos.forEach((grupo) => {
     if (grupo.dados.length > 0) {
-      lista.push({ tipo: 'cabecalho', titulo: grupo.titulo });
+      lista.push({ tipo: "cabecalho", titulo: grupo.titulo });
       grupo.dados.forEach((entrada) =>
         lista.push({
-          tipo: 'entrada',
+          tipo: "entrada",
           entrada,
           iaLendo: entrada.id === idIaLendo,
-        })
+        }),
       );
     }
   });
@@ -103,11 +104,11 @@ function agruparEntradas(
 
 function formatarDataEntrada(isoString: string): string {
   const data = new Date(isoString);
-  return new Intl.DateTimeFormat('pt-BR', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
   }).format(data);
 }
 
@@ -129,7 +130,7 @@ function PulseIALendo() {
           duration: 700,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     );
     loop.start();
     return () => loop.stop();
@@ -154,16 +155,24 @@ interface CardEntradaProps {
   entrada: EntradaDiario;
   iaLendo: boolean;
   onPress: () => void;
+  onExcluir: (id: string) => void;
 }
 
-function CardEntrada({ entrada, iaLendo, onPress }: CardEntradaProps) {
-  const preview = entrada.conteudo.slice(0, 80) +
-    (entrada.conteudo.length > 80 ? '...' : '');
+function CardEntrada({
+  entrada,
+  iaLendo,
+  onPress,
+  onExcluir,
+}: CardEntradaProps) {
+  const preview =
+    entrada.conteudo.slice(0, 80) + (entrada.conteudo.length > 80 ? "..." : "");
 
   return (
     <TouchableOpacity
       style={estilos.cardEntrada}
       onPress={onPress}
+      onLongPress={() => onExcluir(entrada.id)}
+      delayLongPress={600}
       activeOpacity={0.78}
       accessibilityLabel={`Entrada: ${entrada.titulo}`}
       accessibilityRole="button"
@@ -190,7 +199,9 @@ function CardEntrada({ entrada, iaLendo, onPress }: CardEntradaProps) {
               size={10}
               color={ShelloTema.cores.marca}
             />
-            <Text style={estilos.badgeContextoTexto}>No contexto do Shello</Text>
+            <Text style={estilos.badgeContextoTexto}>
+              No contexto do Shello
+            </Text>
           </View>
         )}
       </View>
@@ -215,8 +226,8 @@ function EstadoVazio({ onNova }: EstadoVazioProps) {
       </View>
       <Text style={estilos.vazioTitulo}>Seu diário está em branco</Text>
       <Text style={estilos.vazioSubtitulo}>
-        Registre seus pensamentos, sentimentos e reflexões. Cada entrada é
-        um passo na sua jornada.
+        Registre seus pensamentos, sentimentos e reflexões. Cada entrada é um
+        passo na sua jornada.
       </Text>
       <TouchableOpacity
         style={estilos.vazioButtonCTA}
@@ -225,7 +236,12 @@ function EstadoVazio({ onNova }: EstadoVazioProps) {
         accessibilityLabel="Escrever primeira entrada no diário"
         accessibilityRole="button"
       >
-        <Feather name="edit-3" size={16} color="#FFFFFF" style={estilos.vazioButtonIcone} />
+        <Feather
+          name="edit-3"
+          size={16}
+          color="#FFFFFF"
+          style={estilos.vazioButtonIcone}
+        />
         <Text style={estilos.vazioButtonTexto}>Escrever primeira entrada</Text>
       </TouchableOpacity>
     </View>
@@ -240,7 +256,11 @@ interface EstadoNenhumResultadoProps {
   onLimpar: () => void;
 }
 
-function EstadoNenhumResultado({ busca, filtroAtivo, onLimpar }: EstadoNenhumResultadoProps) {
+function EstadoNenhumResultado({
+  busca,
+  filtroAtivo,
+  onLimpar,
+}: EstadoNenhumResultadoProps) {
   return (
     <View style={estilos.vazioContainer}>
       <View style={estilos.vazioIconeCirculo}>
@@ -248,7 +268,9 @@ function EstadoNenhumResultado({ busca, filtroAtivo, onLimpar }: EstadoNenhumRes
       </View>
       <Text style={estilos.vazioTitulo}>Nenhuma entrada encontrada</Text>
       <Text style={estilos.vazioSubtitulo}>
-        Não encontramos nenhuma reflexão com {busca ? `"${busca}"` : 'esse filtro'}. Tente ajustar sua busca ou limpar os filtros.
+        Não encontramos nenhuma reflexão com{" "}
+        {busca ? `"${busca}"` : "esse filtro"}. Tente ajustar sua busca ou
+        limpar os filtros.
       </Text>
       <TouchableOpacity
         style={estilos.vazioButtonCTA}
@@ -264,7 +286,7 @@ function EstadoNenhumResultado({ busca, filtroAtivo, onLimpar }: EstadoNenhumRes
 // ─── Componente Principal ─────────────────────────────────────────────────────
 
 export default function TelaDiario({ navigation }: Props) {
-  const { entradas } = useShello();
+  const { entradas, removerEntrada } = useShello();
 
   // ID da entrada que está com "IA lendo" (gerenciado via param de retorno)
   const [idIaLendo, setIdIaLendo] = useState<string | null>(null);
@@ -288,23 +310,25 @@ export default function TelaDiario({ navigation }: Props) {
 
   // Navegar para nova entrada
   const handleNovaEntrada = useCallback(() => {
-    navigation.navigate('EntradaDiario', { nova: true });
+    navigation.navigate("EntradaDiario", { nova: true });
   }, [navigation]);
 
   // Navegar para editar entrada existente
   const handleAbrirEntrada = useCallback(
     (entrada: EntradaDiario) => {
-      navigation.navigate('EntradaDiario', { entrada });
+      navigation.navigate("EntradaDiario", { entrada });
     },
-    [navigation]
+    [navigation],
   );
 
   // Escuta quando uma nova entrada foi criada (via route params)
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      const params = navigation.getState().routes.find(
-        (r) => r.name === 'ListaEntradas'
-      )?.params as { novaEntradaId?: string } | undefined;
+    const unsubscribe = navigation.addListener("focus", () => {
+      const params = navigation
+        .getState()
+        .routes.find((r) => r.name === "ListaEntradas")?.params as
+        | { novaEntradaId?: string }
+        | undefined;
 
       if (params?.novaEntradaId) {
         const entrada = entradas.find((e) => e.id === params.novaEntradaId);
@@ -312,18 +336,23 @@ export default function TelaDiario({ navigation }: Props) {
           dispararIaLendo(entrada.id);
         }
       }
+      // Always clear ghost params after focus to prevent re-triggering
+      navigation.setParams({ novaEntradaId: undefined } as any);
     });
     return unsubscribe;
   }, [navigation, entradas, dispararIaLendo]);
 
   // ─── Busca e Filtros ────────────────────────────────────────────────────────
 
-  const [busca, setBusca] = useState('');
-  const [filtroAtivo, setFiltroAtivo] = useState<'todas' | 'contexto' | 'hoje' | 'ontem' | 'semana' | 'antigas'>('todas');
+  const [busca, setBusca] = useState("");
+  const [filtroAtivo, setFiltroAtivo] = useState<
+    "todas" | "contexto" | "hoje" | "ontem" | "semana" | "antigas"
+  >("todas");
+  const [entradaExcluir, setEntradaExcluir] = useState<string | null>(null);
 
   const handleLimparFiltros = useCallback(() => {
-    setBusca('');
-    setFiltroAtivo('todas');
+    setBusca("");
+    setFiltroAtivo("todas");
   }, []);
 
   const entradasFiltradas = useMemo(() => {
@@ -336,8 +365,8 @@ export default function TelaDiario({ navigation }: Props) {
       if (!matchBusca) return false;
 
       // 2. Filtro de período/categoria
-      if (filtroAtivo === 'todas') return true;
-      if (filtroAtivo === 'contexto') return !!entrada.adicionadaAoContexto;
+      if (filtroAtivo === "todas") return true;
+      if (filtroAtivo === "contexto") return !!entrada.adicionadaAoContexto;
 
       const dataEntrada = inicioDoDia(new Date(entrada.dataCriacao));
       const agora = new Date();
@@ -347,16 +376,16 @@ export default function TelaDiario({ navigation }: Props) {
       const semanaAtras = new Date(hoje);
       semanaAtras.setDate(semanaAtras.getDate() - 7);
 
-      if (filtroAtivo === 'hoje') {
+      if (filtroAtivo === "hoje") {
         return dataEntrada.getTime() === hoje.getTime();
       }
-      if (filtroAtivo === 'ontem') {
+      if (filtroAtivo === "ontem") {
         return dataEntrada.getTime() === ontem.getTime();
       }
-      if (filtroAtivo === 'semana') {
+      if (filtroAtivo === "semana") {
         return dataEntrada >= semanaAtras;
       }
-      if (filtroAtivo === 'antigas') {
+      if (filtroAtivo === "antigas") {
         return dataEntrada < semanaAtras;
       }
 
@@ -370,7 +399,7 @@ export default function TelaDiario({ navigation }: Props) {
 
   const renderItem = useCallback(
     ({ item }: ListRenderItemInfo<ItemLista>) => {
-      if (item.tipo === 'cabecalho') {
+      if (item.tipo === "cabecalho") {
         return (
           <View style={estilos.cabecalhoGrupoContainer}>
             <Text style={estilos.cabecalhoGrupo}>{item.titulo}</Text>
@@ -382,18 +411,19 @@ export default function TelaDiario({ navigation }: Props) {
           entrada={item.entrada}
           iaLendo={item.iaLendo}
           onPress={() => handleAbrirEntrada(item.entrada)}
+          onExcluir={setEntradaExcluir}
         />
       );
     },
-    [handleAbrirEntrada]
+    [handleAbrirEntrada],
   );
 
   const keyExtractor = useCallback(
     (item: ItemLista, index: number) =>
-      item.tipo === 'cabecalho'
+      item.tipo === "cabecalho"
         ? `cabecalho-${item.titulo}`
         : item.entrada.id || String(index),
-    []
+    [],
   );
 
   // ─── Cabeçalho da FlatList ─────────────────────────────────────────────────
@@ -413,13 +443,13 @@ export default function TelaDiario({ navigation }: Props) {
         </View>
       </View>
     ),
-    []
+    [],
   );
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView style={estilos.areaSegura} edges={['top']}>
+    <SafeAreaView style={estilos.areaSegura} edges={["top"]}>
       {/* Botão proeminente "Nova Entrada" fixo no topo */}
       <View style={estilos.barraAcoesTopo}>
         {renderCabecalho()}
@@ -428,13 +458,23 @@ export default function TelaDiario({ navigation }: Props) {
           onPress={handleNovaEntrada}
           activeOpacity={0.82}
         >
-          <Feather name="plus" size={18} color="#FFFFFF" style={estilos.botaoIcone} />
+          <Feather
+            name="plus"
+            size={18}
+            color="#FFFFFF"
+            style={estilos.botaoIcone}
+          />
           <Text style={estilos.botaoNovaEntradaTexto}>Nova Entrada</Text>
         </TouchableOpacity>
 
         {/* Input de busca */}
         <View style={estilos.containerBusca}>
-          <Feather name="search" size={18} color={ShelloTema.cores.textoS} style={estilos.iconeBusca} />
+          <Feather
+            name="search"
+            size={18}
+            color={ShelloTema.cores.textoS}
+            style={estilos.iconeBusca}
+          />
           <TextInput
             style={estilos.inputBusca}
             placeholder="Buscar nas suas reflexões..."
@@ -445,7 +485,10 @@ export default function TelaDiario({ navigation }: Props) {
             autoCorrect={false}
           />
           {busca.length > 0 && (
-            <TouchableOpacity onPress={() => setBusca('')} style={estilos.botaoLimpar}>
+            <TouchableOpacity
+              onPress={() => setBusca("")}
+              style={estilos.botaoLimpar}
+            >
               <Feather name="x" size={16} color={ShelloTema.cores.textoS} />
             </TouchableOpacity>
           )}
@@ -459,22 +502,19 @@ export default function TelaDiario({ navigation }: Props) {
           contentContainerStyle={estilos.conteudoFiltros}
         >
           {[
-            { id: 'todas', rotulo: 'Todas' },
-            { id: 'contexto', rotulo: 'No Contexto' },
-            { id: 'hoje', rotulo: 'Hoje' },
-            { id: 'ontem', rotulo: 'Ontem' },
-            { id: 'semana', rotulo: 'Esta Semana' },
-            { id: 'antigas', rotulo: 'Mais Antigas' },
+            { id: "todas", rotulo: "Todas" },
+            { id: "contexto", rotulo: "No Contexto" },
+            { id: "hoje", rotulo: "Hoje" },
+            { id: "ontem", rotulo: "Ontem" },
+            { id: "semana", rotulo: "Esta Semana" },
+            { id: "antigas", rotulo: "Mais Antigas" },
           ].map((opcao) => {
             const ativo = filtroAtivo === opcao.id;
             return (
               <TouchableOpacity
                 key={opcao.id}
                 onPress={() => setFiltroAtivo(opcao.id as any)}
-                style={[
-                  estilos.pillFiltro,
-                  ativo && estilos.pillFiltroAtivo,
-                ]}
+                style={[estilos.pillFiltro, ativo && estilos.pillFiltroAtivo]}
                 activeOpacity={0.8}
               >
                 <Text
@@ -513,6 +553,27 @@ export default function TelaDiario({ navigation }: Props) {
           )
         }
       />
+
+      <DialogShello
+        visible={!!entradaExcluir}
+        onClose={() => setEntradaExcluir(null)}
+        title="Excluir Entrada"
+        message="Tem certeza que deseja apagar esta reflexão? Esta ação não pode ser desfeita."
+        confirmLabel="Excluir"
+        cancelLabel="Cancelar"
+        onConfirm={async () => {
+          if (entradaExcluir) {
+            try {
+              await removerEntrada(entradaExcluir);
+            } catch (e) {
+              console.error("Erro ao excluir entrada:", e);
+            } finally {
+              setEntradaExcluir(null);
+            }
+          }
+        }}
+        isDestructive
+      />
     </SafeAreaView>
   );
 }
@@ -536,9 +597,9 @@ const estilos = StyleSheet.create({
 
   // ── Cabeçalho da tela ──
   cabecalhoTela: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
     marginBottom: ShelloTema.espacamento.md,
   },
   cabecalhoTitulos: {
@@ -561,8 +622,8 @@ const estilos = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: ShelloTema.cores.marcaClaro,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   // ── Botão Nova Entrada ──
@@ -571,9 +632,9 @@ const estilos = StyleSheet.create({
     borderRadius: ShelloTema.forma.bordaMedia,
     paddingVertical: ShelloTema.espacamento.md,
     paddingHorizontal: ShelloTema.espacamento.xl,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     minHeight: 52,
     ...ShelloTema.sombra.media,
   },
@@ -581,7 +642,7 @@ const estilos = StyleSheet.create({
     marginRight: ShelloTema.espacamento.sm,
   },
   botaoNovaEntradaTexto: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: ShelloTema.tipografia.tamanhos.normal,
     fontWeight: ShelloTema.tipografia.pesos.negrito,
     letterSpacing: 0.3,
@@ -600,8 +661,8 @@ const estilos = StyleSheet.create({
   cabecalhoGrupoContainer: {
     marginTop: ShelloTema.espacamento.md,
     marginBottom: ShelloTema.espacamento.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: ShelloTema.espacamento.sm,
   },
   cabecalhoGrupo: {
@@ -620,7 +681,7 @@ const estilos = StyleSheet.create({
     marginBottom: ShelloTema.espacamento.sm,
     ...ShelloTema.sombra.suave,
     borderWidth: 1,
-    borderColor: ShelloTema.cores.marcaClaro + '60',
+    borderColor: ShelloTema.cores.marcaClaro + "60",
   },
   cardEntradaTitulo: {
     fontSize: ShelloTema.tipografia.tamanhos.pequeno,
@@ -636,17 +697,17 @@ const estilos = StyleSheet.create({
     marginBottom: ShelloTema.espacamento.sm,
   },
   cardEntradaRodape: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   cardEntradaData: {
     fontSize: ShelloTema.tipografia.tamanhos.minusculo,
     color: ShelloTema.cores.textoS,
   },
   badgeContexto: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: ShelloTema.cores.marcaClaro,
     borderRadius: ShelloTema.forma.bordaPill,
     paddingHorizontal: ShelloTema.espacamento.sm,
@@ -661,8 +722,8 @@ const estilos = StyleSheet.create({
 
   // ── Indicador de IA lendo ──
   iaLendoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginTop: ShelloTema.espacamento.sm,
     paddingTop: ShelloTema.espacamento.sm,
     borderTopWidth: 1,
@@ -676,14 +737,14 @@ const estilos = StyleSheet.create({
     fontSize: 11,
     color: ShelloTema.cores.marca,
     fontWeight: ShelloTema.tipografia.pesos.medio,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
 
   // ── Estado vazio ──
   vazioContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: ShelloTema.espacamento.xxl,
     paddingHorizontal: ShelloTema.espacamento.xl,
     gap: ShelloTema.espacamento.md,
@@ -693,8 +754,8 @@ const estilos = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     backgroundColor: ShelloTema.cores.marcaClaro,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: ShelloTema.espacamento.sm,
   },
   vazioTitulo: {
@@ -702,18 +763,18 @@ const estilos = StyleSheet.create({
     fontFamily: ShelloTema.tipografia.titulo,
     fontWeight: ShelloTema.tipografia.pesos.negrito,
     color: ShelloTema.cores.textoP,
-    textAlign: 'center',
+    textAlign: "center",
   },
   vazioSubtitulo: {
     fontSize: ShelloTema.tipografia.tamanhos.pequeno,
     color: ShelloTema.cores.textoS,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: ShelloTema.tipografia.alturaLinha + 4,
     maxWidth: 280,
   },
   vazioButtonCTA: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: ShelloTema.cores.marca,
     borderRadius: ShelloTema.forma.bordaPill,
     paddingVertical: ShelloTema.espacamento.md,
@@ -725,20 +786,20 @@ const estilos = StyleSheet.create({
     marginRight: ShelloTema.espacamento.sm,
   },
   vazioButtonTexto: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: ShelloTema.tipografia.tamanhos.normal,
     fontWeight: ShelloTema.tipografia.pesos.negrito,
   },
   containerBusca: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: ShelloTema.cores.superficie,
     borderRadius: ShelloTema.forma.bordaPill,
     paddingHorizontal: ShelloTema.espacamento.md,
     marginTop: ShelloTema.espacamento.md,
     height: 46,
     borderWidth: 1,
-    borderColor: ShelloTema.cores.marcaClaro + '60',
+    borderColor: ShelloTema.cores.marcaClaro + "60",
     ...ShelloTema.sombra.suave,
   },
   iconeBusca: {
@@ -746,7 +807,7 @@ const estilos = StyleSheet.create({
   },
   inputBusca: {
     flex: 1,
-    height: '100%',
+    height: "100%",
     color: ShelloTema.cores.textoP,
     fontSize: ShelloTema.tipografia.tamanhos.pequeno,
   },
@@ -767,7 +828,7 @@ const estilos = StyleSheet.create({
     borderRadius: ShelloTema.forma.bordaPill,
     backgroundColor: ShelloTema.cores.superficie,
     borderWidth: 1,
-    borderColor: ShelloTema.cores.marcaClaro + '40',
+    borderColor: ShelloTema.cores.marcaClaro + "40",
     ...ShelloTema.sombra.suave,
   },
   pillFiltroAtivo: {
@@ -780,7 +841,7 @@ const estilos = StyleSheet.create({
     fontWeight: ShelloTema.tipografia.pesos.medio,
   },
   textoPillFiltroAtivo: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontWeight: ShelloTema.tipografia.pesos.negrito,
   },
 });
