@@ -11,6 +11,8 @@ import {
   TouchableOpacity,
   TextInput,
   Animated,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -740,7 +742,7 @@ export default function TelaPerfil() {
                 />
               ))}
 
-              {listaMemorias.length > 5 && (
+              {listaMemorias.length > 0 && (
                 <TouchableOpacity
                   style={estilos.botaoVerTodas}
                   onPress={() => setModalMemoriasVisivel(true)}
@@ -861,6 +863,80 @@ export default function TelaPerfil() {
           aoCancelar={() => setModalConfirmarSaida(false)}
         />
       )}
+
+      {/* ── Modal: todas as memórias ────────────────────────────────────────── */}
+      <Modal
+        visible={modalMemoriasVisivel}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setModalMemoriasVisivel(false)}
+      >
+        <SafeAreaView style={estilos.modalAreaSegura}>
+          {/* Cabeçalho */}
+          <View style={estilos.modalCabecalho}>
+            <TouchableOpacity
+              style={estilos.modalBotaoFechar}
+              onPress={() => setModalMemoriasVisivel(false)}
+              accessibilityLabel="Fechar"
+              accessibilityRole="button"
+            >
+              <Feather name="x" size={22} color={ShelloTema.cores.textoP} />
+            </TouchableOpacity>
+            <Text style={estilos.modalTitulo}>Memórias</Text>
+            <View style={{ width: 38 }} />
+          </View>
+
+          {/* Conteúdo */}
+          <View style={estilos.modalConteudo}>
+            <Text style={estilos.modalSubtitulo}>
+              {listaMemorias.length}{' '}
+              {listaMemorias.length === 1 ? 'memória registrada' : 'memórias registradas'}
+            </Text>
+
+            {/* Busca */}
+            <View style={estilos.modalContainerBusca}>
+              <Feather
+                name="search"
+                size={16}
+                color={ShelloTema.cores.textoS}
+                style={estilos.modalIconeBusca}
+              />
+              <TextInput
+                style={estilos.modalInputBusca}
+                placeholder="Buscar memória..."
+                placeholderTextColor={ShelloTema.cores.textoS}
+                value={buscaMemoria}
+                onChangeText={setBuscaMemoria}
+                autoCorrect={false}
+                autoCapitalize="none"
+                clearButtonMode="while-editing"
+              />
+            </View>
+
+            {/* Lista */}
+            <FlatList
+              data={memoriasModalFiltradas}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <CardMemoria
+                  memoria={item}
+                  aoRemover={handleRemoverMemoria}
+                />
+              )}
+              contentContainerStyle={estilos.modalListaConteudo}
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                <View style={estilos.modalListaVazia}>
+                  <Feather name="inbox" size={28} color={ShelloTema.cores.textoS} />
+                  <Text style={estilos.modalListaVaziaTexto}>
+                    {buscaMemoria ? 'Nenhuma memória encontrada.' : 'Sem memórias ainda.'}
+                  </Text>
+                </View>
+              }
+            />
+          </View>
+        </SafeAreaView>
+      </Modal>
 
     </SafeAreaView>
   );
