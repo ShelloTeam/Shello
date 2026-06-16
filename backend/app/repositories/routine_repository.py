@@ -1,3 +1,4 @@
+import logging
 from supabase import create_client, Client
 from app.core.config import get_settings
 
