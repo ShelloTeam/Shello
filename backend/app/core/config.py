@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     sentry_dsn: str = ""
     admin_key: str = ""
     resend_api_key: str = ""
-    base_url: str = "https://shello-production.up.railway.app"
+    base_url: str = ""
 
     jwt_algorithm: str = "HS256"
     jwt_expire_days: int = 7
