@@ -1,5 +1,7 @@
 # ADR-003 — TDD Obrigatório como Processo de Desenvolvimento
 
+> **Vigente na versão Flutter (ADR-005).** Os testes ficam em `test/` e seguem a mesma regra: Red → Green → Refactor.
+
 ## Status
 
 `Accepted`

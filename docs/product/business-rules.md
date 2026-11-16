@@ -1,9 +1,26 @@
 # Regras de Negócio — Shello
 
+> **Nota da migração (2026-11):** o aplicativo agora é offline. As regras acima são aplicadas localmente, no domínio Flutter, e não por um servidor. Referências a API, Supabase ou OpenAI descrevem a versão anterior (ver `docs/legado/`).
+
 > **Audiência:** Desenvolvedores e agentes de IA. Todas as regras aqui descritas são autoritativas e devem ser
 > implementadas sem exceção. Qualquer divergência entre código e este documento deve ser tratada como bug.
 
 ---
+
+## Contas e dados locais (versão Flutter)
+
+Esta seção vale para a versão Flutter (ADR-005 e ADR-006). Não há servidor: os dados ficam
+no aparelho, separados por conta.
+
+- **Isolamento.** Cada conta enxerga somente seu diário, tarefas, rotinas, memórias,
+  conversas e preferências. Implementado por `EscopoContaKeyValueStore`.
+- **Cadastro.** A conta nova começa vazia, com o onboarding pendente e sem nome de
+  referência. Cadastrar não altera os dados de outras contas.
+- **Demonstração.** Os dados de exemplo pertencem à conta de demonstração. Restaurá-los
+  regrava apenas essa conta, não altera a sessão nem outras contas, e o botão só aparece
+  nela.
+- **Atualização do armazenamento.** Dados gravados pela versão 1, que não tinham dono,
+  são descartados na primeira execução da versão 2, e a demonstração é recriada.
 
 ## 1. Chat
 

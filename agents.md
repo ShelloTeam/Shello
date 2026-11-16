@@ -1,147 +1,95 @@
-# agents.md — Guia Global do Agente | Shello
+# agents.md — Guia do agente | Shello (Flutter)
 
-> Este arquivo é o ponto de entrada para qualquer agente de IA que trabalha neste repositório.
-> Leia-o **antes de qualquer coisa**. Ele orienta onde encontrar cada informação e como executar tarefas.
+> Leia este arquivo antes de alterar qualquer coisa. Ele aponta onde estão as informações
+> e como executar tarefas. As regras de trabalho estão em [`CLAUDE.md`](CLAUDE.md).
 
----
+## O que é o projeto
 
-## O que é o Shello?
-
-O Shello é um assistente pessoal inteligente com chat IA, diário de anotações e gestão de tarefas. É um app mobile em React Native (Expo) com backend FastAPI, banco Supabase e IA via OpenAI `gpt-4o-mini`.
-
-Fluxo de dados:
-```
-Celular (Expo Go / APK)
-       │
-       ▼
-Railway (FastAPI) ──► OpenAI gpt-4o-mini
-       │
-       ▼
-   Supabase (banco + auth)
-```
-
----
+Shello é um assistente pessoal (diário, tarefas, rotinas e chat com o mascote) em
+**Flutter 3.50 / Dart 3.14**. Roda **offline**, com dados locais e respostas determinísticas.
+Não há servidor, banco remoto, LLM nem chave de API.
 
 ## Onde encontrar cada coisa
 
-### Documentação do produto e negócio
-| O que você precisa                     | Onde está                                      |
-|----------------------------------------|------------------------------------------------|
-| Regras de negócio do produto           | `docs/product/business-rules.md`               |
-| Decisões arquiteturais (ADRs)          | `docs/adr/`                                    |
-| Padrões de código e convenções         | `docs/standards/`                              |
-| Glossário de termos do domínio         | `docs/product/glossary.md`                     |
-| Stack tecnológica completa             | `docs/tech/stack.md`                           |
-| Variáveis de ambiente                  | `docs/tech/environment-variables.md`           |
-| Guia de contribuição e Git flow        | `docs/standards/git-workflow.md`               |
+| Precisa de | Onde está |
+|---|---|
+| Regras de negócio | `docs/product/business-rules.md` |
+| Glossário de termos | `docs/product/glossary.md` |
+| Stack e organização | `docs/tech/stack.md` |
+| Decisões de arquitetura | `docs/adr/` (ADR-005 descreve a migração) |
+| Relatório da migração e desvios | `docs/migracao-flutter.md` |
+| Convenções de Git | `docs/standards/git-workflow.md` |
+| Documentação histórica (React Native / FastAPI) | `docs/legado/` |
+| Tokens visuais (cores, espaços, raios, tipografia) | `lib/app/theme/shello_tokens.dart` |
+| Seed e dados de demonstração | `lib/core/mocks/dados_demonstracao.dart` |
+| Chaves de armazenamento | `lib/core/storage/chaves_armazenamento.dart` |
+| Isolamento de dados por conta (ADR-006) | `lib/core/storage/escopo_conta_key_value_store.dart` e `armazenamentoDaContaProvider` em `lib/core/providers.dart` |
+| Providers (injeção de dependência) | `lib/core/providers.dart` e `lib/features/*/presentation/*_providers.dart` |
+| Rotas | `lib/app/router/rotas.dart` e `lib/app/router/app_router.dart` |
 
-### Código-fonte
-| Módulo                        | Caminho                              | agents.md local                              |
-|-------------------------------|--------------------------------------|----------------------------------------------|
-| Backend (visão geral)         | `backend/`                           | `backend/agents.md`                          |
-| Backend — Controllers         | `backend/app/controllers/`           | `backend/app/controllers/agents.md`          |
-| Backend — Services            | `backend/app/services/`              | `backend/app/services/agents.md`             |
-| Backend — Repositories        | `backend/app/repositories/`          | `backend/app/repositories/agents.md`         |
-| Backend — Core (config, LLM)  | `backend/app/core/`                  | `backend/app/core/agents.md`                 |
-| Backend — API v1 (auth)       | `backend/app/api/`                   | `backend/app/api/agents.md`                  |
-| Backend — Schemas Pydantic    | `backend/app/schemas/`               | `backend/app/schemas/agents.md`              |
-| Backend — Testes              | `backend/tests/`                     | `backend/tests/agents.md`                    |
-| Frontend (visão geral)        | `frontend/`                          | `frontend/agents.md`                         |
-| Frontend — Screens            | `frontend/src/screens/`              | `frontend/src/screens/agents.md`             |
-| Frontend — Services (API)     | `frontend/src/services/`             | `frontend/src/services/agents.md`            |
-| Frontend — Contexts           | `frontend/src/contexts/`             | `frontend/src/contexts/agents.md`            |
-| Frontend — Navigation         | `frontend/src/navigation/`           | `frontend/src/navigation/agents.md`          |
+## Estrutura de uma funcionalidade
 
----
-
-## Metodologia obrigatória
-
-### TDD — Red → Green → Refactor
-Todo código de produção **deve** ter um teste falhando primeiro. Sem exceção.
+Cada pasta em `lib/features/` segue o mesmo padrão:
 
 ```
-1. RED    → Escreva o teste. Rode e confirme que FALHA.
-2. GREEN  → Escreva o mínimo de código para passar.
-3. REFACTOR → Melhore sem quebrar os testes.
+<funcionalidade>/
+  domain/        regras puras: modelos, validações, cálculos (sem Flutter nem armazenamento)
+  data/          repositórios sobre KeyValueStore (ColecaoJson para listas)
+  presentation/  telas, controllers (Notifier do Riverpod), widgets e providers
 ```
 
-### Arquitetura em camadas (POO)
-```
-Controller → Service → Repository → Supabase
-```
-- **Controller**: só recebe requisição e retorna resposta. Zero lógica.
-- **Service**: lógica de negócio pura. Não acessa banco diretamente.
-- **Repository**: queries ao Supabase. Não tem regras de negócio.
+- **Domínio** não importa Flutter nem armazenamento. Testes em `test/features/<f>/domain/`.
+- **Repositórios** persistem via `KeyValueStore`. Testes em `test/features/<f>/data/` com
+  `MemoriaKeyValueStore`.
+- **Controllers** guardam o estado e chamam os repositórios. Testes de integração em
+  `test/integracao/` e de interface em `test/features/<f>/presentation/`.
 
-Detalhes completos: `docs/standards/architecture.md`
+## Como executar tarefas comuns
 
----
+### Acrescentar uma regra de negócio
+1. Escreva o teste em `test/features/<f>/domain/` e confirme que falha.
+2. Implemente a regra em `lib/features/<f>/domain/` até o teste passar.
+3. Se a regra aparece na tela, escreva também o teste de interface antes da alteração.
 
-## Como executar tarefas
+### Acrescentar uma tela
+1. Escreva o teste de interface em `test/features/<f>/presentation/` (ou em `test/app/`
+   para fluxos que atravessam telas) e confirme que falha.
+2. Crie a tela em `lib/features/<f>/presentation/`. Use `ShelloCard`, `ShelloBotaoPrincipal`,
+   `ShelloCampo` e os demais componentes de `lib/shared/widgets/`.
+3. Registre a rota em `lib/app/router/app_router.dart` e o caminho em `rotas.dart`.
+4. Adicione a chave `Key('...')` nos elementos que os testes precisam encontrar.
 
-### Antes de começar qualquer task
-1. Leia este arquivo (`agents.md` raiz)
-2. Leia o `agents.md` do módulo relevante
-3. Consulte `docs/product/business-rules.md` se a task envolve regras de negócio
-4. Consulte `docs/adr/` se a decisão arquitetural já foi tomada
+### Mudar um modelo persistido
+1. Atualize o `toJson`/`fromJson` do modelo e os testes de persistência.
+2. Se o formato antigo deixar de ser lido, incremente `ChavesArmazenamento.versaoAtual`
+   e documente a migração.
 
-### Para implementar um endpoint novo (backend)
-1. Leia `backend/agents.md`
-2. Leia `backend/app/controllers/agents.md`
-3. Verifique `docs/product/business-rules.md` para regras do domínio
-4. Siga o ciclo TDD: teste primeiro em `backend/tests/`
-5. Implemente na ordem: Repository → Service → Controller
+### Mudar dados de demonstração
+Edite `DadosDemonstracao.criar` em `lib/core/mocks/dados_demonstracao.dart`. A seed é gravada
+somente na conta demo (`restaurarDemonstracao`). Atualize
+`test/core/mocks/dados_demonstracao_test.dart` e os testes de interface que dependem dos
+números (sequência de dias, contagem de entradas, tarefas, memórias).
 
-### Para implementar uma tela nova (frontend)
-1. Leia `frontend/agents.md`
-2. Leia `frontend/src/screens/agents.md`
-3. Verifique o endpoint correspondente no Swagger: `http://localhost:8000/docs`
-4. Verifique `frontend/src/services/agents.md` para saber como chamar a API
-
-### Para tomar uma decisão arquitetural
-1. Verifique se já existe um ADR relevante em `docs/adr/`
-2. Se não existir, crie um novo ADR seguindo o template em `docs/adr/template.md`
-3. Documente a decisão **antes** de implementar
-
----
-
-## Comandos essenciais
+## Comandos
 
 ```bash
-# Subir backend local
-make backend
-
-# Subir frontend (Expo)
-make dev
-
-# Rodar testes do backend
-cd backend && pytest --tb=short -v
-
-# Verificar tipos TypeScript do frontend
-make check
-
-# Derrubar containers
-make down
+flutter pub get
+flutter analyze
+dart format lib test
+flutter test
+flutter run            # dispositivo ou emulador
+flutter run -d chrome  # versão web
+flutter build web --release --no-web-resources-cdn
+flutter build apk --debug
 ```
-
----
 
 ## Regras inegociáveis
 
-1. **Nunca commite `.env`** — segredos ficam no Railway ou local apenas
-2. **Nunca escreva código de produção sem teste falhando primeiro** (TDD)
-3. **Nunca acesse Supabase diretamente em Services** — use Repository
-4. **Nunca coloque lógica em Controllers** — use Service
-5. **Nunca use modelo LLM dinâmico** — o modelo é fixo: `gpt-4o-mini-2024-07-18`
-6. **`due_date` de tarefas criadas via chat é sempre `null`** (regra D06 do MVP)
-7. **Commits em Conventional Commits**: `feat:`, `fix:`, `chore:`, `docs:`
-
----
-
-## Referências rápidas
-
-- Swagger local: `http://localhost:8000/docs`
-- ReDoc local: `http://localhost:8000/redoc`
-- README principal: `README.md`
-- Documentação técnica completa: `docs/`
-- CLAUDE.md (referência histórica do autor original): `CLAUDE.md`
+1. **TDD**: nenhum código de produção sem um teste que falhou antes.
+2. **Camadas**: regra de negócio no domínio; nada de regra dentro de widget.
+3. **Offline**: nenhuma funcionalidade pode depender de rede, servidor ou chave de API.
+4. **Regras de negócio**: limite de 20 mensagens, arquivamento após 2h, regra D06 (tarefa
+   do chat sem data, máximo de 3 por confirmação) e limite de 10.000 caracteres no diário.
+5. **Respostas do chat** nunca são apresentadas como geradas por IA real.
+6. **Commits** em Conventional Commits (`feat:`, `fix:`, `test:`, `docs:`, `chore:`).
+7. **Não faça push** para `main`. Trabalhe na branch de migração.

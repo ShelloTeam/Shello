@@ -1,5 +1,7 @@
 # ADR-004 — Regra D06: Tarefas Criadas via Chat Têm `due_date = null`
 
+> **Vigente na versão Flutter.** A regra D06 é aplicada em `criarTarefasDoChat` (`lib/features/tarefas/domain/regras_tarefas.dart`).
+
 ## Status
 
 `Accepted`

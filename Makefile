@@ -1,22 +1,25 @@
-.PHONY: dev apk setup check
+# Comandos de desenvolvimento do Shello (Flutter). Veja README.md.
 
-ifeq ($(OS),Windows_NT)
-    SETUP_CMD = powershell -ExecutionPolicy Bypass -File .\setup.ps1
-else
-    SETUP_CMD = ./setup.sh
-endif
+.PHONY: setup run web test analyze apk web-build
 
 setup:
-	@$(SETUP_CMD)
+	flutter pub get
 
-dev:
-	cd frontend && npx expo start --tunnel
+run:
+	flutter run
+
+web:
+	flutter run -d chrome --web-browser-flag=--window-size=390,844
+
+test:
+	flutter test
+
+analyze:
+	flutter analyze
+	dart format --output=none --set-exit-if-changed lib test
 
 apk:
-	cd frontend && eas build --platform android --profile preview
+	flutter build apk --debug
 
-check:
-	cd frontend && npm run ts-check
-
-
-
+web-build:
+	flutter build web --release --no-web-resources-cdn
