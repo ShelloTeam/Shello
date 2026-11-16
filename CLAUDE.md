@@ -6,7 +6,7 @@ Instruções para o agente de código neste repositório. Leia também [`agents.
 
 Aplicativo Flutter 3.50 offline e mockado: diário, tarefas, rotinas, chat determinístico
 e perfil. Sem backend, sem rede, sem chave de API. A versão React Native e o backend
-FastAPI foram removidos (tag `legacy-react-native-fastapi`).
+FastAPI foram removidos (commit `d970767`).
 
 ## Metodologia obrigatória: TDD (Red → Green → Refactor)
 

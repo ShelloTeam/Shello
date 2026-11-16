@@ -16,7 +16,7 @@ ligadas a elas, sem rede, sem servidor, sem banco remoto e sem chave de API. A b
 - as capturas do build web em `docs/screenshots/flutter/`.
 
 A versão React Native e o backend FastAPI foram removidos da árvore. A versão completa
-continua acessível pela tag `legacy-react-native-fastapi` (commit `d970767`).
+continua acessível pelo commit `d970767`.
 
 ## 2. Mapeamento de telas
 
@@ -161,5 +161,4 @@ Na ordem em que foram feitos (branch `claude/shello-flutter-migration-mvkdoc`):
 | `1b62ad1` | Título só com frase curta e completa |
 | commits seguintes | Formatação dos testes do editor, capturas e este relatório |
 
-Histórico anterior à migração: `d970767` (`chore: remove test files`), igual à tag
-`legacy-react-native-fastapi`.
+Histórico anterior à migração: `d970767` (`chore: remove test files`), que é a última versão React Native antes da migração.

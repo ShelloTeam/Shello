@@ -4,7 +4,7 @@ Assistente pessoal com diário, tarefas, rotinas e chat com o mascote Shello.
 Aplicativo **Flutter** que roda **offline**: sem servidor, sem banco remoto e sem chave de API.
 
 > A versão anterior (React Native + FastAPI + Supabase + OpenAI) não faz mais parte da
-> árvore. Está preservada na tag `legacy-react-native-fastapi`. Veja
+> árvore. Está preservada no commit `d970767`. Veja
 > [`docs/migracao-flutter.md`](docs/migracao-flutter.md).
 
 ## Requisitos

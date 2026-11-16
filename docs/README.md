@@ -21,8 +21,8 @@
 ## Legado (histórico, não descreve a versão atual)
 
 Estes documentos descrevem a versão React Native com backend FastAPI. Ficam para
-consulta do histórico do produto. A versão anterior completa está na tag
-`legacy-react-native-fastapi`.
+consulta do histórico do produto. A versão anterior completa está no commit
+`d970767`.
 
 | Documento | Conteúdo |
 |---|---|

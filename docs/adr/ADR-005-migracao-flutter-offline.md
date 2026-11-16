@@ -38,7 +38,7 @@ Decidimos reescrever o aplicativo inteiro em **Flutter 3.50 (Dart 3.14)**, com:
 - **Regras de negócio** em código puro (`domain/`), testadas sem UI nem armazenamento.
 
 A versão React Native e o backend FastAPI são removidos da branch ativa após a
-validação. Permanecem acessíveis pela tag `legacy-react-native-fastapi`.
+validação. Permanecem acessíveis pelo commit `d970767`.
 
 ## Consequências
 
